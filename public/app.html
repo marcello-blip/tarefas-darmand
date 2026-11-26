@@ -215,6 +215,34 @@ button.kpi:hover{border-color:var(--muted)}
 .pinfo div small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
 .pinfo div b{font-weight:600}
 
+/* narrar */
+.janela.larga{max-width:980px}
+.narra-txt{width:100%;min-height:170px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:15px;line-height:1.5;resize:vertical}
+.narra-txt:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+.narra-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.mic{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:999px;font-weight:600}
+.mic .ponto{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.mic.on{background:var(--red-soft);border-color:var(--red);color:var(--red)}
+.mic.on .ponto{background:var(--red);animation:pulsa 1s infinite}
+@keyframes pulsa{50%{opacity:.25}}
+.dica{font-size:12.5px;color:var(--muted)}
+.carrega-ia{display:flex;align-items:center;gap:12px;padding:30px 4px;color:var(--muted)}
+.giro{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.resumo-ia{background:var(--brand-soft);color:var(--ink);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:500}
+.duvidas{background:var(--amber-soft);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.duvidas b{color:var(--amber)}
+.duvidas ul{margin:6px 0 0;padding-left:18px}
+.prop{display:grid;grid-template-columns:24px minmax(180px,2.2fr) 1fr 1.2fr 128px 128px 92px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.prop.cab{font-size:12px;color:var(--muted);font-weight:500;padding-top:0}
+.prop input[type=text],.prop input[type=date],.prop select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;min-width:0}
+.prop input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand)}
+.prop.off{opacity:.45}
+.prop .det{grid-column:2/-1;font-size:12px;color:var(--muted);margin-top:-4px}
+.pnovo{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px dashed var(--brand);border-radius:10px;margin-bottom:8px;flex-wrap:wrap}
+.pnovo input[type=text]{flex:1;min-width:160px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.pnovo .tag{margin:0}
+
 /* janela */
 .fundo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
 .janela{background:var(--surface);border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -273,6 +301,15 @@ button.kpi:hover{border-color:var(--muted)}
   .g-rot select{display:none}
   .gantt{max-height:none}
   .projs{grid-template-columns:1fr}
+  .prop{grid-template-columns:24px 1fr 1fr;row-gap:6px}
+  .prop>:nth-child(2){grid-column:2/-1}
+  .prop>:nth-child(3),.prop>:nth-child(5),.prop>:nth-child(7){grid-column:2}
+  .prop>:nth-child(4),.prop>:nth-child(6){grid-column:3}
+  .janela .rodape{flex-wrap:wrap}
+  .janela .rodape .esq{flex-basis:100%}
+  .prop.cab{display:none}
+  .prop .det{grid-column:1/-1;margin:0}
+  #btnNarrar{padding:8px 10px}
   .fundo{padding:0}
   .janela{border-radius:0;min-height:100vh}
 }
@@ -291,6 +328,7 @@ button.kpi:hover{border-color:var(--muted)}
       <button data-v="equipe">Equipe</button>
     </nav>
     <div class="eu">
+      <button class="btn" id="btnNarrar" title="Fale ou escreva o que precisa ser feito e a IA monta as tarefas">🎙 Narrar</button>
       <button class="btn prim" id="btnNova">+ Nova tarefa</button>
       <div class="menu-eu">
         <button class="btn-eu" id="btnEu" aria-label="Minha conta"></button>
@@ -686,7 +724,7 @@ function abreJanela(titulo, corpo, rodape) {
   const p = f.querySelector('input:not([disabled]),textarea:not([disabled])'); if (p && !matchMedia('(max-width:640px)').matches) p.focus();
   return f;
 }
-function fechaJanela() { const j = $('#janela'); if (j) j.remove(); document.body.style.overflow = ''; }
+function fechaJanela() { paraMic(); const j = $('#janela'); if (j) j.remove(); document.body.style.overflow = ''; }
 
 function janelaTarefa(t, padrao) {
   const nova = !t; t = t || { titulo: '', descricao: '', responsavel: S.me.email, projetoId: null, prioridade: 2, status: 'afazer', prazo: '', ...padrao };
@@ -801,6 +839,112 @@ function janelaProjeto(p) {
   };
 }
 
+// ---------------- narrar: fala ou texto → IA propõe → pessoa revisa → cria ----------------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function paraMic() { if (rec) { try { rec.stop(); } catch {} rec = null; } const b = $('#nMic'); if (b) { b.classList.remove('on'); b.lastChild.textContent = ' Falar'; } }
+function janelaNarrar(textoInicial) {
+  const foco = S.vista === 'projetos' && S.projetoSel ? S.projetoSel : '';
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const corpo = `
+    <p class="sub" style="margin:0 0 10px">Conte o que precisa ser feito, como se estivesse explicando para alguém da equipe: o quê, quem faz, até quando, e de qual projeto. A IA monta as tarefas e você confere antes de criar.</p>
+    <textarea class="narra-txt" id="nTxt" maxlength="8000" placeholder="Ex.: Para a inauguração da loja Norte no dia 20 de dezembro, a Ana contrata 3 vendedores até sexta, o Bruno compra o mobiliário semana que vem e a Carla organiza o evento de abertura, que é urgente.">${esc(textoInicial || '')}</textarea>
+    <div class="narra-bar">
+      ${SR ? '<button class="mic" id="nMic" type="button"><span class="ponto"></span> Falar</button>' : '<span class="dica">Para falar em vez de digitar: no celular use o microfone do teclado; no Windows aperte Win + H.</span>'}
+      <label class="dica" style="display:flex;align-items:center;gap:6px;margin-left:auto">Projeto:
+        <select id="nProj" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">${opt('', 'A IA decide', foco)}${S.projetos.filter(p => p.ativo).map(p => opt(p.id, p.nome, foco)).join('')}</select></label>
+    </div>
+    ${S.me.ia ? '' : '<div class="aviso" style="margin-top:12px">A IA ainda não está configurada no servidor (falta a chave ANTHROPIC_API_KEY no Railway).</div>'}`;
+  const j = abreJanela('🎙 Narrar tarefas', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="nVai">Entender narração</button>');
+  j.querySelector('.janela').classList.add('larga');
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  const mic = j.querySelector('#nMic');
+  if (mic) mic.onclick = () => {
+    if (rec) { paraMic(); return; }
+    const ta = $('#nTxt'); let base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
+    rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
+    rec.onresult = e => {
+      let fim = '', parcial = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fim += r[0].transcript; else parcial += r[0].transcript; }
+      if (fim) base += fim.trim() + ' ';
+      ta.value = base + parcial; ta.scrollTop = ta.scrollHeight;
+    };
+    rec.onerror = e => { if (e.error === 'not-allowed') toast('O navegador não liberou o microfone. Libere nas permissões do site.', true); else if (e.error !== 'no-speech' && e.error !== 'aborted') toast('Microfone: ' + e.error, true); paraMic(); };
+    rec.onend = () => { if (rec) { try { rec.start(); } catch { paraMic(); } } }; // o Chrome para sozinho após um silêncio; continua até a pessoa clicar
+    try { rec.start(); mic.classList.add('on'); mic.lastChild.textContent = ' Ouvindo… clique para parar'; } catch { paraMic(); }
+  };
+  j.querySelector('#nVai').onclick = async () => {
+    paraMic();
+    const texto = $('#nTxt').value.trim(), projetoId = $('#nProj').value;
+    if (texto.length < 5) { toast('Narre ou escreva o que precisa ser feito.', true); return; }
+    const corpoEl = j.querySelector('.corpo'), rod = j.querySelector('.rodape'), antes = corpoEl.innerHTML;
+    corpoEl.innerHTML = '<div class="carrega-ia"><span class="giro"></span>Entendendo a narração e montando as tarefas… pode levar alguns segundos.</div>'; rod.style.display = 'none';
+    try { const prop = await api('POST', '/api/narrar', { texto, projetoId: projetoId || null }); revisaNarracao(prop, texto); }
+    catch (e) { toast(e.message, true); janelaNarrar(texto); }
+  };
+}
+function revisaNarracao(p, textoOriginal) {
+  const ativos = S.pessoas.filter(x => x.ativo);
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel ?? '') === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const optsProj = sel => opt('', 'Sem projeto', sel) + p.projetosNovos.map(n => opt('n:' + n.ref, '✨ ' + n.nome + ' (novo)', sel)).join('') + S.projetos.filter(x => x.ativo).map(x => opt(x.id, x.nome, sel)).join('');
+  const optsResp = sel => opt('', '— ninguém —', sel) + ativos.map(x => opt(x.email, x.nome, sel)).join('');
+  const novos = p.projetosNovos.map(n => `<div class="pnovo" data-pref="${esc(n.ref)}"><input type="checkbox" checked data-pon><span class="tag">projeto novo</span>
+      <input type="text" value="${esc(n.nome)}" data-pnome maxlength="80"><span class="dica">${n.responsavel ? esc(nome(n.responsavel)) + ' · ' : ''}${n.inicio ? brData(n.inicio) : '?'} a ${n.fim ? brData(n.fim) : '?'}</span></div>`).join('');
+  const linhas = p.tarefas.map((t, i) => `<div class="prop" data-i="${i}">
+      <input type="checkbox" checked data-on title="Criar esta tarefa">
+      <input type="text" value="${esc(t.titulo)}" data-k="titulo" maxlength="160">
+      <select data-k="responsavel">${optsResp(t.responsavel)}</select>
+      <select data-k="projeto">${optsProj(t.projetoNovoRef ? 'n:' + t.projetoNovoRef : t.projetoId)}</select>
+      <input type="date" value="${esc(t.inicio || '')}" data-k="inicio" title="Início">
+      <input type="date" value="${esc(t.prazo || '')}" data-k="prazo" title="Prazo">
+      <select data-k="prioridade">${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select>
+      ${t.descricao ? `<div class="det">${esc(t.descricao)}</div>` : ''}
+    </div>`).join('');
+  const corpo = `
+    ${p.resumo ? `<div class="resumo-ia">✨ ${esc(p.resumo)}</div>` : ''}
+    ${p.duvidas.length ? `<div class="duvidas"><b>Confira antes de criar:</b><ul>${p.duvidas.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
+    ${novos}
+    ${p.tarefas.length ? `<div class="prop cab"><span></span><span>Tarefa</span><span>Responsável</span><span>Projeto</span><span>Início</span><span>Prazo</span><span>Prioridade</span></div>${linhas}`
+      : '<div class="card vazio">A IA não encontrou tarefas nesta narração. Volte e descreva o que precisa ser feito.</div>'}`;
+  const n = p.tarefas.length;
+  const j = abreJanela('Confira as tarefas', corpo, `<button class="btn esq" id="nVolta">‹ Voltar e editar a narração</button><button class="btn" data-fecha2>Cancelar</button>${n ? `<button class="btn prim" id="nCria">Criar ${n} ${n === 1 ? 'tarefa' : 'tarefas'}</button>` : ''}`);
+  j.querySelector('.janela').classList.add('larga');
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  j.querySelector('#nVolta').onclick = () => janelaNarrar(textoOriginal);
+  const conta = () => { const k = j.querySelectorAll('[data-on]:checked').length, b = j.querySelector('#nCria'); if (b) { b.textContent = `Criar ${k} ${k === 1 ? 'tarefa' : 'tarefas'}`; b.disabled = !k; } };
+  j.addEventListener('change', e => {
+    if (e.target.matches('[data-on]')) { e.target.closest('.prop').classList.toggle('off', !e.target.checked); conta(); }
+    if (e.target.matches('[data-pon]')) e.target.closest('.pnovo').style.opacity = e.target.checked ? 1 : .45;
+  });
+  const cria = j.querySelector('#nCria');
+  if (cria) cria.onclick = async () => {
+    cria.disabled = true; cria.textContent = 'Criando…';
+    // 1) projetos novos marcados
+    const idDoNovo = {};
+    for (const el of j.querySelectorAll('.pnovo')) {
+      if (!el.querySelector('[data-pon]').checked) continue;
+      const n = p.projetosNovos.find(x => x.ref === el.dataset.pref);
+      try { const r = await api('POST', '/api/projetos', { nome: el.querySelector('[data-pnome]').value, descricao: n.descricao, responsavel: n.responsavel, inicio: n.inicio, fim: n.fim }); idDoNovo[n.ref] = r.id; }
+      catch (e) { toast(`Projeto "${n.nome}": ${e.message}`, true); }
+    }
+    // 2) tarefas marcadas
+    let ok = 0; const falhas = [];
+    for (const el of j.querySelectorAll('.prop[data-i]')) {
+      if (!el.querySelector('[data-on]').checked) continue;
+      const t = p.tarefas[+el.dataset.i], v = k => el.querySelector(`[data-k="${k}"]`).value;
+      const pr = v('projeto'), projetoId = pr.startsWith('n:') ? (idDoNovo[pr.slice(2)] || null) : (pr ? +pr : null);
+      let inicio = v('inicio') || null, prazo = v('prazo') || null; if (inicio && prazo && prazo < inicio) [inicio, prazo] = [prazo, inicio];
+      try { await api('POST', '/api/tarefas', { titulo: v('titulo'), descricao: t.descricao, responsavel: v('responsavel') || null, projetoId, inicio, prazo, prioridade: +v('prioridade') }); ok++; }
+      catch (e) { falhas.push(`${v('titulo')}: ${e.message}`); }
+    }
+    fechaJanela();
+    if (falhas.length) toast(`${ok} criadas; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${ok} ${ok === 1 ? 'tarefa criada' : 'tarefas criadas'}.`);
+    const unico = Object.values(idDoNovo)[0];
+    S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico);
+    await recarrega(); window.scrollTo(0, 0);
+  };
+}
+
 // ---------------- arrastar barras do Gantt ----------------
 let arr = null;
 function salvaDatas(t, inicio, prazo, ant) {
@@ -843,7 +987,8 @@ async function mudaStatus(id, status) {
 }
 
 document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0); };
-$('#btnNova').onclick = () => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
+$('#btnNarrar').onclick = () => janelaNarrar('');
+$('#btnNova').onclick =() => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
 $('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu');
   p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div><button id="sair">Sair</button>`;
   p.classList.toggle('oculto'); $('#sair').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; }; };

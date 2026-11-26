@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const pg = require('pg');
 const { OAuth2Client } = require('google-auth-library');
+const ia = require('./ia');
 
 const PORT = process.env.PORT || 3000;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -183,7 +184,7 @@ const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json(
 app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public', 'app.html')));
 
 // ---------- eu ----------
-app.get('/api/me', auth, (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor }));
+app.get('/api/me', auth, (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV }));
 
 // ---------- equipe ----------
 app.get('/api/pessoas', auth, async (req, res) => {
@@ -367,6 +368,73 @@ app.delete('/api/comentarios/:id', auth, async (req, res) => {
   if (c.autor !== req.email && !req.gestor) return res.status(403).json({ erro: 'Sem permissão.' });
   await pool.query('DELETE FROM comentarios WHERE id=$1', [parseInt(req.params.id, 10)]);
   res.json({ ok: true });
+});
+
+// ---------- narrar (IA) ----------
+// A IA devolve uma PROPOSTA; aqui ela é conferida (pessoas, projetos e datas têm de existir e ser válidos)
+// e volta para a tela, onde a pessoa revisa e cria pelas rotas normais.
+const usoNarrar = new Map(); // limite simples por pessoa: 30 narrações por hora
+const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+const EXEMPLO_DEV = h => ({ resumo: 'Exemplo de teste (sem chave da IA neste computador): 2 tarefas para um projeto novo.',
+  projetos_novos: [{ ref: 'p1', nome: 'Projeto de exemplo', descricao: 'Criado no modo de teste', responsavel: null, inicio: h, fim: null }],
+  tarefas: [
+    { titulo: 'Primeira tarefa do exemplo', descricao: '', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: h, prazo: h, prioridade: 2 },
+    { titulo: 'Segunda tarefa do exemplo', descricao: 'Detalhe de exemplo', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: null, prazo: null, prioridade: 3 },
+  ], duvidas: ['Este é um exemplo fixo: configure ANTHROPIC_API_KEY para a IA entender a narração de verdade.'] });
+
+app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) => {
+  const texto = txt(req.body && req.body.texto, 8000);
+  if (!texto || texto.length < 5) return res.status(400).json({ erro: 'Narre ou escreva o que precisa ser feito.' });
+  if (!ia.temChave() && !DEV) return res.status(503).json({ erro: 'A IA ainda não foi configurada. Falta a variável ANTHROPIC_API_KEY no Railway.' });
+  const agora = Date.now(), uso = (usoNarrar.get(req.email) || []).filter(t => agora - t < 3600e3);
+  if (uso.length >= 30) return res.status(429).json({ erro: 'Muitas narrações na última hora. Espere um pouco.' });
+  usoNarrar.set(req.email, uso.concat(agora));
+
+  const [pp, pj] = await Promise.all([pool.query('SELECT * FROM pessoas WHERE ativo = true ORDER BY nome'), pool.query('SELECT * FROM projetos ORDER BY nome')]);
+  const pessoas = pp.rows, projetos = pj.rows.map(projetoOut).filter(p => p.ativo);
+  const foco = req.body.projetoId ? projetos.find(p => p.id === parseInt(req.body.projetoId, 10)) : null;
+  const hoje = hojeSP();
+  const contexto = {
+    hoje, dia_da_semana: new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' }),
+    narrador: { email: req.email, nome: req.pessoa.nome },
+    equipe: pessoas.map(p => ({ email: p.email, nome: p.nome, cargo: p.cargo || undefined, area: p.area || undefined })),
+    projetos: projetos.map(p => ({ id: p.id, nome: p.nome, inicio: p.inicio || undefined, fim: p.fim || undefined, responsavel: p.responsavel || undefined })),
+    pode_criar_projetos: req.gestor, projeto_foco: foco ? { id: foco.id, nome: foco.nome } : null,
+  };
+
+  let r;
+  if (!ia.temChave()) r = EXEMPLO_DEV(hoje);
+  else {
+    try { r = await ia.entender(texto, contexto); }
+    catch (e) {
+      if (e.status === 422 || (e.status === 502 && !(e instanceof ia.Anthropic.APIError))) return res.status(e.status).json({ erro: e.message });
+      if (e instanceof ia.Anthropic.RateLimitError) return res.status(429).json({ erro: 'A IA está ocupada agora. Tente de novo em um minuto.' });
+      if (e instanceof ia.Anthropic.AuthenticationError || e instanceof ia.Anthropic.PermissionDeniedError) { console.error('IA: chave recusada', e.status); return res.status(503).json({ erro: 'A chave da IA foi recusada. Confira ANTHROPIC_API_KEY no Railway.' }); }
+      if (e instanceof ia.Anthropic.APIConnectionError) return res.status(504).json({ erro: 'Sem resposta da IA. Tente de novo.' });
+      if (e instanceof ia.Anthropic.APIError) { console.error('IA: erro', e.status, e.message); return res.status(502).json({ erro: 'A IA respondeu com erro. Tente de novo.' }); }
+      throw e;
+    }
+  }
+
+  // confere tudo o que a IA propôs
+  const emails = new Set(pessoas.map(p => p.email)), idsProj = new Set(projetos.map(p => p.id));
+  const pessoaOk = e => { const x = e ? String(e).toLowerCase() : null; return x && emails.has(x) ? x : null; };
+  const data = v => { const d = dataOk(v); return d === undefined ? null : d; };
+  const ordena = (a, b) => (a && b && b < a ? [b, a] : [a, b]);
+  const projetosNovos = (req.gestor && Array.isArray(r.projetos_novos) ? r.projetos_novos : []).slice(0, 5).map(p => {
+    const [inicio, fim] = ordena(data(p.inicio), data(p.fim));
+    return { ref: txt(p.ref, 20), nome: txt(p.nome, 80), descricao: txt(p.descricao, 3000) || '', responsavel: pessoaOk(p.responsavel), inicio, fim };
+  }).filter(p => p.ref && p.nome);
+  const refs = new Set(projetosNovos.map(p => p.ref));
+  const tarefas = (Array.isArray(r.tarefas) ? r.tarefas : []).slice(0, 60).map(t => {
+    const [inicio, prazo] = ordena(data(t.inicio), data(t.prazo));
+    const pid = Number.isInteger(t.projeto_id) && idsProj.has(t.projeto_id) ? t.projeto_id : null;
+    const ref = !pid && t.projeto_novo_ref && refs.has(t.projeto_novo_ref) ? t.projeto_novo_ref : null;
+    return { titulo: txt(t.titulo, 160), descricao: txt(t.descricao, 5000) || '', responsavel: pessoaOk(t.responsavel), projetoId: pid, projetoNovoRef: ref,
+      inicio, prazo, prioridade: [1, 2, 3, 4].includes(t.prioridade) ? t.prioridade : 2 };
+  }).filter(t => t.titulo);
+  const duvidas = (Array.isArray(r.duvidas) ? r.duvidas : []).map(d => txt(d, 300)).filter(Boolean).slice(0, 10);
+  res.json({ resumo: txt(r.resumo, 400) || '', projetosNovos, tarefas, duvidas });
 });
 
 // tratador de erro: responde em vez de derrubar o processo

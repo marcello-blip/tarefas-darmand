@@ -10,6 +10,7 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 - **Prazos:** calendário do mês e lista agrupada (atrasadas, hoje, amanhã, próximos 7 dias, depois, sem prazo).
 - **Projetos:** cadastro com objetivo, responsável, início, fim previsto, situação (planejamento, em andamento, pausado, concluído, cancelado) e cor. Cada projeto mostra % concluído, tarefas atrasadas, dias restantes e um indicador (No prazo, Em risco, Fora do prazo). A página do projeto tem o resumo, o cronograma por pessoa e as tarefas.
 - **Equipe:** por pessoa, quantas abertas, atrasadas, vencendo em 7 dias, concluídas e % no prazo nos últimos 30 dias.
+- **🎙 Narrar (IA):** fale (botão Falar, no Chrome e no Edge) ou escreva o que precisa ser feito: "para a inauguração da loja Norte, a Ana contrata 3 vendedores até sexta…". A IA (Claude, da Anthropic) monta as tarefas com responsável, projeto, início, prazo e prioridade, e o gestor também pode receber projetos novos. **Nada é criado sem revisão:** a tela mostra o que a IA entendeu e as dúvidas dela, você ajusta ou desmarca o que quiser e clica em Criar. As regras de permissão são as mesmas de sempre.
 - **Histórico:** cada tarefa guarda comentários e registra sozinha quem mudou situação, prazo, responsável ou prioridade (ninguém "mexe no prazo" sem deixar rastro).
 
 ## Quem pode o quê
@@ -36,7 +37,7 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:3000/login e use "Entrar sem Google". O banco fica em memória e some ao fechar. `gestor@darmand.com.br` entra como gestor. Esse modo nunca liga dentro do Railway.
+Abra http://localhost:3000/login e use "Entrar sem Google". O banco fica em memória e some ao fechar. `gestor@darmand.com.br` entra como gestor. Esse modo nunca liga dentro do Railway. Sem `ANTHROPIC_API_KEY`, o Narrar devolve uma proposta de exemplo fixa, só para testar a tela.
 
 ## Subir no Railway (uma vez)
 
@@ -49,6 +50,7 @@ Abra http://localhost:3000/login e use "Entrar sem Google". O banco fica em mem�
    - `ALLOWED_DOMAIN` = `darmand.com.br`
    - `ADMIN_EMAILS` = e-mails dos gestores, separados por vírgula
    - `SESSION_SECRET` = texto aleatório longo, **diferente** do portal
+   - `ANTHROPIC_API_KEY` = chave da API da Anthropic, para o Narrar. Crie em [platform.claude.com](https://platform.claude.com) → Settings → API Keys (precisa de créditos na conta). Sem ela, o resto do sistema funciona e o Narrar avisa que a IA não está configurada. Cada narração custa poucos centavos de dólar; há um limite de 30 narrações por pessoa por hora.
 5. **Endereço.** Settings → Networking → Generate Domain (ou um domínio próprio, ex.: `tarefas.darmand.com.br`).
 6. **Login Google.** No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), dá para usar o mesmo *ID do cliente OAuth* do portal: abra-o e acrescente o endereço novo em "Origens JavaScript autorizadas". Ou crie um ID novo (tipo Aplicativo da Web) só para este sistema. Coloque o Client ID em `GOOGLE_CLIENT_ID`.
 7. Abra o endereço, entre com sua conta e cadastre a equipe em **Equipe → Adicionar pessoa**.
@@ -60,6 +62,7 @@ Para conferir qual versão está no ar: `GET /healthz`.
 | Arquivo | O que é |
 |---|---|
 | `server.js` | servidor (Node + Express), login Google, API e banco |
+| `ia.js` | Narrar: instruções e formato da resposta da IA (modelo `claude-opus-5-5`) |
 | `public/app.html` | a tela do sistema |
 | `public/login.html` | tela de entrada |
 | `public/marca/` | logo e ícones DARMAND |
