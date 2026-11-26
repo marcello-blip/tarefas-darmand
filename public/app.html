@@ -226,6 +226,11 @@ button.kpi:hover{border-color:var(--muted)}
 .mic.on .ponto{background:var(--red);animation:pulsa 1s infinite}
 @keyframes pulsa{50%{opacity:.25}}
 .dica{font-size:12.5px;color:var(--muted)}
+.mic-status{font-size:13px;margin-top:8px;min-height:0;line-height:1.45;color:var(--muted)}
+.mic-status:empty{display:none}
+.mic-status.ok{color:var(--green)}
+.mic-status.aviso{color:var(--amber);background:var(--amber-soft);padding:8px 10px;border-radius:8px}
+.mic-status.erro{color:var(--red);background:var(--red-soft);padding:8px 10px;border-radius:8px}
 .carrega-ia{display:flex;align-items:center;gap:12px;padding:30px 4px;color:var(--muted)}
 .giro{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:gira .8s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
@@ -850,7 +855,16 @@ function janelaProjeto(p) {
 // ---------------- narrar: fala ou texto → IA propõe → pessoa revisa → cria ----------------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
-function paraMic() { if (rec) { try { rec.stop(); } catch {} rec = null; } const b = $('#nMic'); if (b) { b.classList.remove('on'); b.lastChild.textContent = ' Falar'; } }
+function paraMic() { if (rec) { const r = rec; rec = null; try { r.stop(); } catch {} } const b = $('#nMic'); if (b) { b.classList.remove('on'); b.lastChild.textContent = ' Falar'; } clearTimeout(paraMic.vigia); }
+// mostra dentro da janela o que o microfone está fazendo (aviso que não some sozinho)
+function micStatus(txt, tipo) { const s = $('#nStatus'); if (!s) return; s.innerHTML = txt; s.className = 'mic-status' + (tipo ? ' ' + tipo : ''); }
+const MIC_ERROS = {
+  'not-allowed': 'O navegador bloqueou o microfone. Clique no <b>cadeado 🔒</b> à esquerda do endereço do site, em <b>Microfone</b>, escolha <b>Permitir</b> e recarregue a página.',
+  'service-not-allowed': 'Este navegador não liberou o reconhecimento de voz. Use o <b>Google Chrome</b> ou o <b>Microsoft Edge</b>, ou dite com <b>Win + H</b>.',
+  'audio-capture': 'Nenhum microfone foi encontrado. Confira se o microfone está ligado e escolhido nas configurações de som do computador.',
+  'network': 'O reconhecimento de voz do navegador não conseguiu conectar (ele usa a internet). Tente de novo, use o Chrome ou o Edge, ou dite com <b>Win + H</b>.',
+  'language-not-supported': 'O navegador não reconhece português. Dite com <b>Win + H</b>.',
+};
 function janelaNarrar(textoInicial) {
   const foco = S.vista === 'projetos' && S.projetoSel ? S.projetoSel : '';
   const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
@@ -858,10 +872,12 @@ function janelaNarrar(textoInicial) {
     <p class="sub" style="margin:0 0 10px">Conte o que precisa ser feito, como se estivesse explicando para alguém da equipe: o quê, quem faz, até quando, e de qual projeto. A IA monta as tarefas e você confere antes de criar.</p>
     <textarea class="narra-txt" id="nTxt" maxlength="8000" placeholder="Ex.: Para a inauguração da loja Norte no dia 20 de dezembro, a Ana contrata 3 vendedores até sexta, o Bruno compra o mobiliário semana que vem e a Carla organiza o evento de abertura, que é urgente.">${esc(textoInicial || '')}</textarea>
     <div class="narra-bar">
-      ${SR ? '<button class="mic" id="nMic" type="button"><span class="ponto"></span> Falar</button>' : '<span class="dica">Para falar em vez de digitar: no celular use o microfone do teclado; no Windows aperte Win + H.</span>'}
+      ${SR ? '<button class="mic" id="nMic" type="button"><span class="ponto"></span> Falar</button>' : ''}
       <label class="dica" style="display:flex;align-items:center;gap:6px;margin-left:auto">Projeto:
         <select id="nProj" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">${opt('', 'A IA decide', foco)}${S.projetos.filter(p => p.ativo).map(p => opt(p.id, p.nome, foco)).join('')}</select></label>
     </div>
+    <div id="nStatus" class="mic-status">${SR ? '' : 'Este navegador não tem reconhecimento de voz. '}</div>
+    <p class="dica" style="margin:8px 0 0">💡 Outra forma de falar, que funciona em qualquer navegador: clique no campo de texto e aperte <b>Win + H</b> (Windows) ou toque no <b>microfone do teclado</b> (celular).</p>
     ${S.me.ia ? '' : '<div class="aviso" style="margin-top:12px">A IA ainda não está configurada no servidor (falta a chave ANTHROPIC_API_KEY no Railway).</div>'}`;
   const j = abreJanela('🎙 Narrar tarefas', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="nVai">Entender narração</button>');
   j.querySelector('.janela').classList.add('larga');
@@ -870,16 +886,34 @@ function janelaNarrar(textoInicial) {
   if (mic) mic.onclick = () => {
     if (rec) { paraMic(); return; }
     const ta = $('#nTxt'); let base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
-    rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
-    rec.onresult = e => {
+    const r = new SR(); rec = r; r.lang = 'pt-BR'; r.continuous = true; r.interimResults = true;
+    let abriu = false, ouviu = false, reinicios = 0, inicio = Date.now();
+    r.onaudiostart = () => { abriu = true; micStatus('🎙 Microfone aberto. Pode falar…', 'ok'); };
+    r.onspeechstart = () => { micStatus('🗣 Ouvindo sua voz…', 'ok'); };
+    r.onresult = e => {
+      ouviu = true;
       let fim = '', parcial = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fim += r[0].transcript; else parcial += r[0].transcript; }
+      for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fim += x[0].transcript; else parcial += x[0].transcript; }
       if (fim) base += fim.trim() + ' ';
       ta.value = base + parcial; ta.scrollTop = ta.scrollHeight;
+      micStatus('🗣 Ouvindo… clique em <b>Parar</b> quando terminar.', 'ok');
     };
-    rec.onerror = e => { if (e.error === 'not-allowed') toast('O navegador não liberou o microfone. Libere nas permissões do site.', true); else if (e.error !== 'no-speech' && e.error !== 'aborted') toast('Microfone: ' + e.error, true); paraMic(); };
-    rec.onend = () => { if (rec) { try { rec.start(); } catch { paraMic(); } } }; // o Chrome para sozinho após um silêncio; continua até a pessoa clicar
-    try { rec.start(); mic.classList.add('on'); mic.lastChild.textContent = ' Ouvindo… clique para parar'; } catch { paraMic(); }
+    r.onerror = e => {
+      if (e.error === 'aborted') return;
+      if (e.error === 'no-speech') { micStatus('Não ouvi nada. Fale mais perto do microfone, ou confira se o microfone certo está escolhido no computador.', 'aviso'); return; } // continua ouvindo
+      micStatus(MIC_ERROS[e.error] || `O microfone falhou (${esc(e.error)}). Dite com <b>Win + H</b> ou digite o texto.`, 'erro');
+      paraMic();
+    };
+    r.onend = () => {
+      if (rec !== r) return;
+      // o Chrome para sozinho após um silêncio: recomeça, mas não fica em laço se ele parar logo de cara
+      if (Date.now() - inicio < 1500 && ++reinicios >= 3) { micStatus(MIC_ERROS['service-not-allowed'], 'erro'); paraMic(); return; }
+      inicio = Date.now(); try { r.start(); } catch { paraMic(); }
+    };
+    // se em 5 segundos o microfone nem abriu, avisa (permissão pendente ou bloqueada sem erro)
+    paraMic.vigia = setTimeout(() => { if (rec === r && !abriu) micStatus('O microfone ainda não abriu. Se apareceu um pedido de permissão no alto da tela, clique em <b>Permitir</b>. Se não, clique no cadeado 🔒 ao lado do endereço e permita o microfone.', 'aviso'); }, 5000);
+    try { r.start(); mic.classList.add('on'); mic.lastChild.textContent = ' Parar'; micStatus('Abrindo o microfone…'); }
+    catch (er) { micStatus(`Não deu para iniciar o microfone (${esc(er.message)}). Dite com <b>Win + H</b>.`, 'erro'); paraMic(); }
   };
   j.querySelector('#nVai').onclick = async () => {
     paraMic();

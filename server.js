@@ -420,6 +420,7 @@ const EXEMPLO_DEV = h => ({ resumo: 'Exemplo de teste (sem chave da IA neste com
 app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) => {
   const texto = txt(req.body && req.body.texto, 8000);
   if (!texto || texto.length < 5) return res.status(400).json({ erro: 'Narre ou escreva o que precisa ser feito.' });
+  if (!ia.temChave() && !DEV) console.error('IA: narração recusada, ANTHROPIC_API_KEY não definida');
   if (!ia.temChave() && !DEV) return res.status(503).json({ erro: 'A IA ainda não foi configurada. Falta a variável ANTHROPIC_API_KEY no Railway.' });
   const agora = Date.now(), uso = (usoNarrar.get(req.email) || []).filter(t => agora - t < 3600e3);
   if (uso.length >= 30) return res.status(429).json({ erro: 'Muitas narrações na última hora. Espere um pouco.' });
@@ -440,11 +441,14 @@ app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) 
   let r;
   if (!ia.temChave()) r = EXEMPLO_DEV(hoje);
   else {
-    try { r = await ia.entender(texto, contexto); }
+    const t0 = Date.now();
+    try { r = await ia.entender(texto, contexto); console.log('IA: narração entendida', req.email, `${Date.now() - t0} ms`, `${(r.tarefas || []).length} tarefas`); }
     catch (e) {
+      console.error('IA: falha', req.email, `${Date.now() - t0} ms`, e.constructor && e.constructor.name, e.status || '', String(e.message || '').slice(0, 300));
       if (e.status === 422 || (e.status === 502 && !(e instanceof ia.Anthropic.APIError))) return res.status(e.status).json({ erro: e.message });
       if (e instanceof ia.Anthropic.RateLimitError) return res.status(429).json({ erro: 'A IA está ocupada agora. Tente de novo em um minuto.' });
-      if (e instanceof ia.Anthropic.AuthenticationError || e instanceof ia.Anthropic.PermissionDeniedError) { console.error('IA: chave recusada', e.status); return res.status(503).json({ erro: 'A chave da IA foi recusada. Confira ANTHROPIC_API_KEY no Railway.' }); }
+      if (e instanceof ia.Anthropic.AuthenticationError || e instanceof ia.Anthropic.PermissionDeniedError) { console.error('IA: chave recusada', e.status); return res.status(503).json({ erro: 'A chave da IA foi recusada. Confira ANTHROPIC_API_KEY no Railway (tem de ser uma chave de API, que começa com sk-ant-api).' }); }
+      if (e instanceof ia.Anthropic.BadRequestError && /credit|billing|balance/i.test(String(e.message))) return res.status(503).json({ erro: 'A conta da Anthropic está sem créditos. Adicione créditos em platform.claude.com → Billing.' });
       if (e instanceof ia.Anthropic.APIConnectionError) return res.status(504).json({ erro: 'Sem resposta da IA. Tente de novo.' });
       if (e instanceof ia.Anthropic.APIError) { console.error('IA: erro', e.status, e.message); return res.status(502).json({ erro: 'A IA respondeu com erro. Tente de novo.' }); }
       throw e;
