@@ -11,6 +11,7 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 - **Projetos:** cadastro com objetivo, responsável, início, fim previsto, situação (planejamento, em andamento, pausado, concluído, cancelado) e cor. Cada projeto mostra % concluído, tarefas atrasadas, dias restantes e um indicador (No prazo, Em risco, Fora do prazo). A página do projeto tem o resumo, o cronograma por pessoa e as tarefas.
 - **Equipe:** por pessoa, quantas abertas, atrasadas, vencendo em 7 dias, concluídas e % no prazo nos últimos 30 dias.
 - **🎙 Narrar (IA):** fale (botão Falar, no Chrome e no Edge) ou escreva o que precisa ser feito: "para a inauguração da loja Norte, a Ana contrata 3 vendedores até sexta…". A IA (Claude, da Anthropic) monta as tarefas com responsável, projeto, início, prazo e prioridade, e o gestor também pode receber projetos novos. **Nada é criado sem revisão:** a tela mostra o que a IA entendeu e as dúvidas dela, você ajusta ou desmarca o que quiser e clica em Criar. As regras de permissão são as mesmas de sempre.
+- **📅 Google Agenda:** cada pessoa conecta a própria conta uma vez (aviso no Início ou menu da conta, no canto superior direito). As tarefas sob responsabilidade dela com data viram eventos de dia inteiro na **agenda principal**, do início ao prazo, com projeto, situação e link para o sistema. Mudou no sistema (datas no Gantt, responsável, concluída ✅, apagada), muda na agenda. A sincronização é só do sistema para a agenda: o que for mudado direto no Google Agenda não volta. Na tela Equipe, 📅 indica quem já conectou.
 - **Histórico:** cada tarefa guarda comentários e registra sozinha quem mudou situação, prazo, responsável ou prioridade (ninguém "mexe no prazo" sem deixar rastro).
 
 ## Quem pode o quê
@@ -55,6 +56,22 @@ Abra http://localhost:3000/login e use "Entrar sem Google". O banco fica em mem�
 6. **Login Google.** No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), dá para usar o mesmo *ID do cliente OAuth* do portal: abra-o e acrescente o endereço novo em "Origens JavaScript autorizadas". Ou crie um ID novo (tipo Aplicativo da Web) só para este sistema. Coloque o Client ID em `GOOGLE_CLIENT_ID`.
 7. Abra o endereço, entre com sua conta e cadastre a equipe em **Equipe → Adicionar pessoa**.
 
+## Ligar o Google Agenda (uma vez)
+
+No [Google Cloud Console](https://console.cloud.google.com), no mesmo projeto do ID de login:
+
+1. **APIs e serviços → Biblioteca:** procure **Google Calendar API** e clique em **Ativar**.
+2. **Tela de consentimento OAuth:** tipo de usuário **Interno**, para só contas @darmand.com.br poderem autorizar e não ser preciso verificação do Google. Em **Escopos**, adicione `.../auth/calendar.events`.
+3. **Credenciais → o ID do cliente OAuth do login:**
+   - Em **URIs de redirecionamento autorizados**, adicione `https://<endereço-do-sistema>/api/google/retorno`. Se houver domínio próprio, adicione também com ele.
+   - Copie a **chave secreta do cliente** (`GOCSPX-...`).
+4. **Railway → Variables:** crie `GOOGLE_CLIENT_SECRET` com a chave secreta. Se usar domínio próprio, crie também `APP_URL` com ele (ex.: `https://tarefas.darmand.com.br`); sem isso, o sistema usa o domínio gerado pelo Railway.
+5. Pronto: o aviso "Veja suas tarefas no Google Agenda" aparece para cada pessoa no Início.
+
+O sistema guarda só a permissão de cada pessoa (refresh token), cifrada com uma chave derivada de `SESSION_SECRET`. Se `SESSION_SECRET` mudar, todos precisam conectar de novo. Ao desconectar, o sistema remove da agenda os eventos que criou e revoga a permissão.
+
+**Google Tarefas:** dá para ligar do mesmo jeito (a API do Google Tasks também aceita criar e atualizar tarefas), mas ela só tem data de entrega, sem início. Fica como próximo passo, se fizer falta.
+
 Para conferir qual versão está no ar: `GET /healthz`.
 
 ## Arquivos
@@ -62,6 +79,7 @@ Para conferir qual versão está no ar: `GET /healthz`.
 | Arquivo | O que é |
 |---|---|
 | `server.js` | servidor (Node + Express), login Google, API e banco |
+| `agenda.js` | Google Agenda: conexão de cada pessoa e sincronização das tarefas com a agenda principal |
 | `ia.js` | Narrar: instruções e formato da resposta da IA (modelo `claude-opus-5-5`) |
 | `public/app.html` | a tela do sistema |
 | `public/login.html` | tela de entrada |

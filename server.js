@@ -42,6 +42,10 @@ function criaPool() {
 }
 const pool = criaPool();
 const google = new OAuth2Client(GOOGLE_CLIENT_ID);
+// endereço público (link nos eventos da agenda e retorno do Google): APP_URL, ou o domínio que o Railway gera
+const APP_URL = (process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '')).replace(/\/$/, '');
+const agenda = require('./agenda')({ pool, clientId: GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET || '', segredo: SESSION_SECRET,
+  dominio: ALLOWED_DOMAIN, appUrl: APP_URL, fakeBase: DEV ? process.env.GOOGLE_FAKE_BASE || null : null });
 
 const STATUS = ['afazer', 'andamento', 'aguardando', 'concluida'];
 const STATUS_NOME = { afazer: 'A fazer', andamento: 'Em andamento', aguardando: 'Aguardando', concluida: 'Concluída' };
@@ -70,6 +74,7 @@ async function initDb() {
     id serial PRIMARY KEY, tarefa_id integer NOT NULL, autor text NOT NULL, tipo text NOT NULL DEFAULT 'nota',
     texto text NOT NULL, criado_em timestamptz NOT NULL DEFAULT now())`);
   await pool.query('CREATE INDEX IF NOT EXISTS comentarios_tarefa ON comentarios (tarefa_id)');
+  await agenda.init();
 }
 
 // compara dois textos em tempo constante (tamanho medido em bytes) sem lançar erro
@@ -184,12 +189,38 @@ const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json(
 app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public', 'app.html')));
 
 // ---------- eu ----------
-app.get('/api/me', auth, (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV }));
+app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email) }));
+
+// ---------- Google Agenda ----------
+const retornoGoogle = req => (APP_URL || `${req.protocol}://${req.get('host')}`) + '/api/google/retorno';
+app.get('/api/google/conectar', auth, (req, res) => {
+  if (!agenda.disponivel) return res.redirect('/?agenda=indisponivel');
+  res.redirect(agenda.urlConectar(req.email, retornoGoogle(req)));
+});
+app.get('/api/google/retorno', auth, async (req, res) => {
+  if (req.query.error) return res.redirect('/?agenda=cancelado');
+  try { await agenda.retorno(req.email, String(req.query.code || ''), String(req.query.state || ''), retornoGoogle(req)); }
+  catch (e) { console.error('agenda: falha ao conectar', req.email, e.message); return res.redirect('/?agenda=erro&msg=' + encodeURIComponent(e.message.slice(0, 200))); }
+  agenda.sincronizarPessoa(req.email).catch(e => console.error('agenda: sincronização inicial', e.message));
+  res.redirect('/?agenda=conectado');
+});
+app.get('/api/google/status', auth, async (req, res) => res.json(await agenda.status(req.email)));
+app.post('/api/google/sincronizar', auth, async (req, res) => {
+  const st = await agenda.status(req.email); if (!st.conectado) return res.status(400).json({ erro: 'Seu Google Agenda não está conectado.' });
+  res.json({ ok: true, tarefas: await agenda.sincronizarPessoa(req.email) });
+});
+app.post('/api/google/desconectar', auth, async (req, res) => { await agenda.desconectar(req.email); res.json({ ok: true }); });
+if (DEV && process.env.GOOGLE_FAKE_BASE) {
+  app.get('/dev/google-falso', async (req, res) => {
+    if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress || '')) return res.status(403).end();
+    const email = String(req.query.email || '').toLowerCase(); await agenda.conectarFalso(email); await agenda.sincronizarPessoa(email); res.json({ ok: true });
+  });
+}
 
 // ---------- equipe ----------
 app.get('/api/pessoas', auth, async (req, res) => {
-  const r = await pool.query('SELECT * FROM pessoas ORDER BY nome');
-  res.json(r.rows.filter(p => req.gestor || p.ativo).map(pessoaOut));
+  const [r, con] = await Promise.all([pool.query('SELECT * FROM pessoas ORDER BY nome'), agenda.conectados()]);
+  res.json(r.rows.filter(p => req.gestor || p.ativo).map(p => ({ ...pessoaOut(p), agenda: con.has(p.email) })));
 });
 // cadastra alguém antes do primeiro acesso (para já receber tarefas)
 app.post('/api/pessoas', auth, soGestor, express.json({ limit: '10kb' }), async (req, res) => {
@@ -262,6 +293,7 @@ app.put('/api/projetos/:id', auth, express.json({ limit: '20kb' }), async (req, 
   const d = v.dados;
   await pool.query('UPDATE projetos SET nome=$2, cor=$3, descricao=$4, responsavel=$5, inicio=$6, fim=$7, status=$8 WHERE id=$1',
     [id, d.nome, d.cor, d.descricao, d.responsavel, d.inicio, d.fim, d.status]);
+  if (d.nome !== p.nome) for (const t of (await pool.query('SELECT id FROM tarefas WHERE projeto_id=$1', [id])).rows) agenda.tarefa(t.id); // nome do projeto aparece no evento
   res.json({ ok: true });
 });
 
@@ -308,6 +340,7 @@ app.post('/api/tarefas', auth, express.json({ limit: '50kb' }), async (req, res)
     [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.inicio, d.prazo, d.status === 'concluida' ? new Date() : null]);
   const t = r.rows[0];
   await registraEvento(t.id, req.email, `criou a tarefa (prazo: ${brData(d.prazo)})`);
+  agenda.tarefa(t.id);
   res.json(tarefaOut(t, 0));
 });
 
@@ -335,6 +368,7 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
     await registraEvento(id, req.email, `passou a tarefa de ${await nm(t.responsavel)} para ${await nm(n.responsavel)}`);
   }
   if (n.prioridade !== t.prioridade) await registraEvento(id, req.email, `mudou a prioridade para ${PRIORIDADE_NOME[n.prioridade]}`);
+  agenda.tarefa(id);
   const r2 = await pool.query('SELECT * FROM tarefas WHERE id=$1', [id]);
   res.json(tarefaOut(r2.rows[0]));
 });
@@ -346,6 +380,7 @@ app.delete('/api/tarefas/:id', auth, async (req, res) => {
   if (!req.gestor && t.criado_por !== req.email) return res.status(403).json({ erro: 'Só quem criou a tarefa ou um gestor pode apagá-la.' });
   await pool.query('DELETE FROM comentarios WHERE tarefa_id=$1', [id]);
   await pool.query('DELETE FROM tarefas WHERE id=$1', [id]);
+  agenda.tarefa(id); // apaga o evento da agenda
   res.json({ ok: true });
 });
 

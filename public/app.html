@@ -47,7 +47,7 @@ nav button.ativo{background:var(--brand-soft);color:var(--brand)}
 .btn.perigo{color:var(--red)}
 .btn.peq{padding:5px 10px;font-size:13px}
 .menu-eu{position:relative}
-.menu-eu .pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:200px;padding:6px;z-index:30}
+.menu-eu .pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:220px;max-width:calc(100vw - 32px);padding:6px;z-index:30}
 .menu-eu .pop div{padding:8px 10px;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .menu-eu .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px}
 .menu-eu .pop button:hover{background:var(--gray-soft)}
@@ -599,7 +599,15 @@ function vInicio() {
   const minhas = abertas.filter(t => t.responsavel === S.me.email).sort(ordem);
   const criei = abertas.filter(t => t.criadoPor === S.me.email && t.responsavel !== S.me.email).sort(ordem);
   const h = new Date().getHours(), saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  return `<h2>${saud}, ${esc(primeiroNome(S.me.email))}</h2>
+  const ag = S.me.agenda || {};
+  const avisoAg = ag.disponivel && (ag.erro || (!ag.conectado && localGet('agendaDispensada') !== '1'))
+    ? `<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid ${ag.erro ? 'var(--red)' : 'var(--blue)'}">
+        <span style="font-size:22px">📅</span>
+        <div style="flex:1;min-width:200px"><b>${ag.erro ? 'Seu Google Agenda desconectou' : 'Veja suas tarefas no Google Agenda'}</b><div class="st" style="font-size:13px">${ag.erro ? esc(ag.erro) : 'Conecte uma vez e as tarefas com você aparecem na sua agenda principal, do início ao prazo, sempre atualizadas.'}</div></div>
+        <a class="btn prim" href="/api/google/conectar" style="text-decoration:none">${ag.erro ? 'Reconectar' : 'Conectar'}</a>
+        ${ag.erro ? '' : '<button class="btn" data-dispensa-agenda>Agora não</button>'}
+      </div>` : '';
+  return `${avisoAg}<h2>${saud}, ${esc(primeiroNome(S.me.email))}</h2>
     <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     <div class="kpis">
       <button class="kpi vermelho" data-ir="atrasadas"><div class="v">${atras.length}</div><div class="r">Atrasadas</div></button>
@@ -697,7 +705,7 @@ function vEquipe() {
     const atr = ab.filter(t => situacao(t) === 'atrasada').length, sem = ab.filter(t => t.prazo && t.prazo >= h && t.prazo <= somaDias(h, 7)).length;
     const { concl, pct } = noPrazo30(ts);
     return `<tr class="click ${p.ativo ? '' : 'inativo'}" data-pessoa="${esc(p.email)}">
-      <td><div class="pess">${avatar(p.email)}<div><b>${esc(p.nome)}${p.papel === 'gestor' ? '<span class="tag">gestor</span>' : ''}${p.ativo ? '' : ' <small>(desativado)</small>'}</b><small>${esc([p.cargo, p.area].filter(Boolean).join(' · ') || p.email)}</small></div></div></td>
+      <td><div class="pess">${avatar(p.email)}<div><b>${esc(p.nome)}${p.agenda ? ' <span title="Google Agenda conectado">📅</span>' : ''}${p.papel === 'gestor' ? '<span class="tag">gestor</span>' : ''}${p.ativo ? '' : ' <small>(desativado)</small>'}</b><small>${esc([p.cargo, p.area].filter(Boolean).join(' · ') || p.email)}</small></div></div></td>
       <td>${ab.length}</td>
       <td style="color:${atr ? 'var(--red)' : 'inherit'};font-weight:${atr ? 600 : 400}">${atr}</td>
       <td class="esconde-p">${sem}</td>
@@ -989,9 +997,18 @@ async function mudaStatus(id, status) {
 document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0); };
 $('#btnNarrar').onclick = () => janelaNarrar('');
 $('#btnNova').onclick =() => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
-$('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu');
-  p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div><button id="sair">Sair</button>`;
-  p.classList.toggle('oculto'); $('#sair').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; }; };
+$('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu'), ag = S.me.agenda || {};
+  const agHtml = !ag.disponivel ? '' : ag.conectado
+    ? `<div style="border-bottom:0;margin:0;padding-bottom:2px">📅 Google Agenda conectado<br><small>${ag.eventos} ${ag.eventos === 1 ? 'tarefa' : 'tarefas'} na sua agenda</small></div>
+       <button id="agSinc">Sincronizar agora</button><button id="agDesc">Desconectar Google Agenda</button><hr style="border:0;border-top:1px solid var(--line);margin:4px 0">`
+    : `<button id="agCon">📅 ${ag.erro ? 'Reconectar' : 'Conectar'} Google Agenda</button>${ag.erro ? `<div style="color:var(--red);border:0">${esc(ag.erro)}</div>` : ''}<hr style="border:0;border-top:1px solid var(--line);margin:4px 0">`;
+  p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div>${agHtml}<button id="sair">Sair</button>`;
+  p.classList.toggle('oculto'); $('#sair').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; };
+  const con = $('#agCon'); if (con) con.onclick = () => { location.href = '/api/google/conectar'; };
+  const sinc = $('#agSinc'); if (sinc) sinc.onclick = async () => { sinc.disabled = true; sinc.textContent = 'Sincronizando…'; try { const r = await api('POST', '/api/google/sincronizar'); toast(`Agenda atualizada (${r.tarefas} ${r.tarefas === 1 ? 'tarefa conferida' : 'tarefas conferidas'}).`); await recarrega(); } catch (er) { toast(er.message, true); } p.classList.add('oculto'); };
+  const desc = $('#agDesc'); if (desc) desc.onclick = async () => {
+    if (!confirm('Desconectar o Google Agenda? Os eventos que o sistema criou na sua agenda serão removidos.')) return;
+    try { await api('POST', '/api/google/desconectar'); toast('Google Agenda desconectado.'); await recarrega(); } catch (er) { toast(er.message, true); } p.classList.add('oculto'); }; };
 document.addEventListener('click', e => { if (!e.target.closest('.menu-eu')) $('#popEu').classList.add('oculto'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaJanela(); });
 
@@ -1011,6 +1028,7 @@ main.addEventListener('click', e => {
   if (e.target.closest('#btnAddPessoa')) { janelaPessoa(null); return; }
   if (e.target.closest('#btnAddProj')) { janelaProjeto(null); return; }
   if (e.target.closest('[data-designa]')) return;
+  if (e.target.closest('[data-dispensa-agenda]')) { localSet('agendaDispensada', '1'); desenha(); toast('Você pode conectar depois pelo menu da sua conta (canto superior direito).'); return; }
   const np = e.target.closest('[data-nova-no-proj]'); if (np) { e.stopPropagation(); janelaTarefa(null, { projetoId: +np.dataset.novaNoProj }); return; }
   const ap = e.target.closest('[data-abre-proj]'); if (ap) { S.vista = 'projetos'; S.projetoSel = +ap.dataset.abreProj; S.gScroll = null; desenha(); window.scrollTo(0, 0); return; }
   if (e.target.closest('[data-voltar-proj]')) { S.projetoSel = null; desenha(); return; }
@@ -1056,6 +1074,14 @@ main.addEventListener('drop', e => { const col = e.target.closest('.coluna'); if
 setInterval(() => { if (!document.hidden) recarregaSilencioso(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) recarregaSilencioso(); });
 
+// volta da conexão com o Google Agenda
+(() => {
+  const u = new URLSearchParams(location.search), a = u.get('agenda'); if (!a) return;
+  history.replaceState(null, '', '/');
+  const msg = { conectado: ['Google Agenda conectado. Suas tarefas estão indo para a agenda.'], cancelado: ['Conexão com o Google Agenda cancelada.'],
+    indisponivel: ['A integração com o Google Agenda ainda não foi configurada no servidor.', true], erro: [u.get('msg') || 'Não foi possível conectar o Google Agenda.', true] }[a];
+  if (msg) setTimeout(() => toast(msg[0], msg[1]), 300);
+})();
 recarrega();
 </script>
 </body>
