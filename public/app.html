@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarefas DARMAND</title>
+<link rel="icon" type="image/png" href="/marca/icone-64.png">
+<link rel="apple-touch-icon" href="/marca/icone-180.png">
+<meta name="theme-color" content="#9d162e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --brand:#9d162e;--brand-soft:#f6e8eb;--bg:#f5f4f2;--surface:#fff;--surface2:#faf9f8;--ink:#1d1d1b;--muted:#76757a;--line:#e7e5e2;
+  --red:#c0392b;--red-soft:#fbeaea;--amber:#b7791f;--amber-soft:#fdf3e1;--blue:#2b6cb0;--blue-soft:#e8f0fa;--green:#2f855a;--green-soft:#e6f4ec;--gray-soft:#efeeec;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){:root{
+  --brand:#d0425c;--brand-soft:#3a1c22;--bg:#141414;--surface:#1f1f1f;--surface2:#242424;--ink:#f1f0ee;--muted:#a3a2a6;--line:#333;
+  --red:#ef6b5e;--red-soft:#3b1f1c;--amber:#e0a84a;--amber-soft:#382c17;--blue:#6aa5e8;--blue-soft:#1b2a3b;--green:#5cc28a;--green-soft:#183027;--gray-soft:#2a2a2a;
+  --shadow:none;
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--brand)}
+.oculto{display:none!important}
+
+/* topo */
+header{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.topo{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
+.logo img{width:28px;height:28px;border-radius:7px}
+nav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;color:var(--muted);font-weight:500;white-space:nowrap}
+nav button:hover{background:var(--gray-soft);color:var(--ink)}
+nav button.ativo{background:var(--brand-soft);color:var(--brand)}
+.eu{display:flex;align-items:center;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:9px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--gray-soft)}
+.btn.prim{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.prim:hover{filter:brightness(1.08)}
+.btn.perigo{color:var(--red)}
+.btn.peq{padding:5px 10px;font-size:13px}
+.menu-eu{position:relative}
+.menu-eu .pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:200px;padding:6px;z-index:30}
+.menu-eu .pop div{padding:8px 10px;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu-eu .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px}
+.menu-eu .pop button:hover{background:var(--gray-soft)}
+.btn-eu{border:0;background:none;padding:0;border-radius:50%;display:grid}
+.av{width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:600;color:#fff;flex:none;overflow:hidden;object-fit:cover;border:0;padding:0}
+.av.p{width:24px;height:24px;font-size:10px}
+.av.g{width:40px;height:40px;font-size:14px}
+
+main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+h2{font-size:20px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px}
+.secao{margin-top:26px}
+.secao h3{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.secao h3 .n{color:var(--muted);font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.vazio{padding:24px;text-align:center;color:var(--muted)}
+
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);text-align:left;border-left:4px solid var(--line)}
+button.kpi:hover{border-color:var(--muted)}
+.kpi .v{font-size:28px;font-weight:700;line-height:1.1}
+.kpi .r{color:var(--muted);font-size:13px;margin-top:2px}
+.kpi.vermelho{border-left-color:var(--red)}.kpi.vermelho .v{color:var(--red)}
+.kpi.ambar{border-left-color:var(--amber)}.kpi.ambar .v{color:var(--amber)}
+.kpi.azul{border-left-color:var(--blue)}
+.kpi.verde{border-left-color:var(--green)}.kpi.verde .v{color:var(--green)}
+
+/* lista de tarefas */
+.lista{overflow:hidden}
+.linha{display:grid;grid-template-columns:28px 1fr auto auto auto;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer}
+.linha:first-child{border-top:0}
+.linha:hover{background:var(--surface2)}
+.linha .tit{font-weight:500;min-width:0}
+.linha .tit span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linha .tit small{color:var(--muted);font-weight:400;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.linha.feita .tit span{text-decoration:line-through;color:var(--muted)}
+.chk{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:none;padding:0;display:grid;place-items:center}
+.chk:hover{border-color:var(--green)}
+.chk.on{background:var(--green);border-color:var(--green);color:#fff}
+.chk:disabled{cursor:default;opacity:.5}
+.chk svg{width:12px;height:12px}
+.selo{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--gray-soft);color:var(--muted)}
+.selo.atrasada{background:var(--red-soft);color:var(--red)}
+.selo.hoje{background:var(--amber-soft);color:var(--amber)}
+.selo.semana{background:var(--blue-soft);color:var(--blue)}
+.selo.ok{background:var(--green-soft);color:var(--green)}
+.pri{font-size:12px;font-weight:600}
+.pri.p4{color:var(--red)}.pri.p3{color:var(--amber)}.pri.p2{color:var(--muted);font-weight:500}.pri.p1{color:var(--muted);font-weight:400}
+.proj{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.proj i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.st{font-size:12px;color:var(--muted)}
+
+/* filtros */
+.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.filtros input,.filtros select{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);min-width:0}
+.filtros input[type=search]{flex:1;min-width:180px}
+.alterna{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
+.alterna button{border:0;background:var(--surface);padding:8px 12px;color:var(--muted)}
+.alterna button.ativo{background:var(--brand-soft);color:var(--brand);font-weight:600}
+
+/* quadro */
+.quadro{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.coluna{background:var(--gray-soft);border-radius:14px;padding:10px;min-height:200px}
+.coluna h4{margin:2px 4px 10px;font-size:13px;display:flex;justify-content:space-between;color:var(--muted)}
+.coluna.alvo{outline:2px dashed var(--brand);outline-offset:-2px}
+.cartao{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow)}
+.cartao:hover{border-color:var(--muted)}
+.cartao .t{font-weight:500;margin-bottom:8px}
+.cartao .m{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cartao .m .av{margin-left:auto}
+.cartao.arrastando{opacity:.4}
+
+/* calendário */
+.cal-topo{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cal-topo strong{font-size:16px;min-width:170px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.cal .dsem{padding:8px;font-size:12px;color:var(--muted);text-align:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface2)}
+.cal .dia{min-height:96px;padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;overflow:hidden}
+.cal .dia:hover{background:var(--surface2)}
+.cal .dia.fora{background:var(--surface2);color:var(--muted)}
+.cal .dia.hoje .num{background:var(--brand);color:#fff}
+.cal .dia.sel{outline:2px solid var(--brand);outline-offset:-2px}
+.cal .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:600;margin-bottom:4px}
+.cal .ch{display:block;font-size:11.5px;padding:2px 6px;border-radius:5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--blue-soft);color:var(--blue)}
+.cal .ch.atrasada{background:var(--red-soft);color:var(--red)}
+.cal .ch.hoje{background:var(--amber-soft);color:var(--amber)}
+.cal .ch.ok{background:var(--green-soft);color:var(--green);text-decoration:line-through}
+.cal .mais{font-size:11px;color:var(--muted)}
+.prazos-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start}
+
+/* equipe */
+.tabela{width:100%;border-collapse:collapse}
+.tabela th{font-size:12px;color:var(--muted);font-weight:500;text-align:right;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tabela th:first-child{text-align:left}
+.tabela td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.tabela td:first-child{text-align:left}
+.tabela tr:last-child td{border-bottom:0}
+.tabela tr.click{cursor:pointer}
+.tabela tr.click:hover td{background:var(--surface2)}
+.pess{display:flex;align-items:center;gap:10px}
+.pess b{font-weight:600;display:block}
+.pess small{color:var(--muted)}
+.barra{height:6px;border-radius:3px;background:var(--gray-soft);overflow:hidden;min-width:60px}
+.barra i{display:block;height:100%;background:var(--green)}
+.inativo{opacity:.5}
+.tag{font-size:11px;padding:1px 6px;border-radius:5px;background:var(--brand-soft);color:var(--brand);font-weight:600;margin-left:6px}
+
+/* janela */
+.fundo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.janela{background:var(--surface);border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.janela .cab{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.janela .cab h3{margin:0;font-size:16px}
+.janela .cab button{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);padding:4px 8px}
+.janela .corpo{padding:18px 20px}
+.janela .rodape{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line)}
+.janela .rodape .esq{margin-right:auto}
+.campo{display:block;margin-bottom:14px}
+.campo>span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:500}
+.campo input,.campo select,.campo textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.campo input:focus,.campo select:focus,.campo textarea:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+.campo input:disabled,.campo select:disabled,.campo textarea:disabled{background:var(--surface2);color:var(--muted)}
+.campo textarea{min-height:90px;resize:vertical}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.aviso{font-size:12.5px;color:var(--muted);background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:14px}
+.hist{margin-top:6px;border-top:1px solid var(--line);padding-top:14px}
+.hist h4{margin:0 0 10px;font-size:13px}
+.ev{display:flex;gap:10px;margin-bottom:10px;font-size:13px}
+.ev .txt{flex:1;min-width:0}
+.ev .txt b{font-weight:600}
+.ev .txt small{color:var(--muted);margin-left:6px}
+.ev.evento{color:var(--muted)}
+.ev.evento .ponto{width:24px;display:grid;place-items:center;flex:none}
+.ev.evento .ponto i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.ev .nota{background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;margin-top:3px;white-space:pre-wrap;word-wrap:break-word;color:var(--ink)}
+.ev .apaga{border:0;background:none;color:var(--muted);font-size:12px;padding:0;margin-left:6px}
+.novo-coment{display:flex;gap:8px;margin-top:8px}
+.novo-coment textarea{flex:1;min-height:40px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);resize:vertical}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:60;font-size:13.5px;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.toast.erro{background:var(--red);color:#fff}
+.carregando{padding:60px;text-align:center;color:var(--muted)}
+
+@media (max-width:900px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .prazos-grid{grid-template-columns:1fr}
+  .esconde-m{display:none}
+}
+@media (max-width:640px){
+  .topo{flex-wrap:wrap;gap:8px 12px}
+  nav{order:3;flex-basis:100%}
+  .logo span{display:none}
+  .eu{margin-left:auto}
+  .linha{grid-template-columns:24px 1fr auto;gap:10px}
+  .linha .esconde-p{display:none}
+  .duas{grid-template-columns:1fr}
+  .cal .dia{min-height:58px;padding:3px}
+  .cal .ch{font-size:0;padding:0;height:6px;border-radius:3px;margin-bottom:2px}
+  .cal .mais{display:none}
+  .alterna{margin-left:0}
+  .tabela .esconde-p{display:none}
+  .fundo{padding:0}
+  .janela{border-radius:0;min-height:100vh}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="topo">
+    <div class="logo"><img src="/marca/icone-64.png" alt=""><span>Tarefas</span></div>
+    <nav id="nav">
+      <button data-v="inicio" class="ativo">Início</button>
+      <button data-v="tarefas">Tarefas</button>
+      <button data-v="prazos">Prazos</button>
+      <button data-v="equipe">Equipe</button>
+    </nav>
+    <div class="eu">
+      <button class="btn prim" id="btnNova">+ Nova tarefa</button>
+      <div class="menu-eu">
+        <button class="btn-eu" id="btnEu" aria-label="Minha conta"></button>
+        <div class="pop oculto" id="popEu"></div>
+      </div>
+    </div>
+  </div>
+</header>
+<main id="main"><div class="carregando">Carregando…</div></main>
+
+<script>
+// ---------------- estado ----------------
+const S = { me: null, pessoas: [], projetos: [], tarefas: [], vista: 'inicio', modo: localGet('modo') || 'lista',
+  f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null };
+const STATUS = [['afazer', 'A fazer'], ['andamento', 'Em andamento'], ['aguardando', 'Aguardando'], ['concluida', 'Concluída']];
+const STATUS_NOME = Object.fromEntries(STATUS);
+const PRI = { 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Urgente' };
+const CHECK = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg>';
+
+function localGet(k) { try { return localStorage.getItem('tarefas.' + k); } catch { return null; } }
+function localSet(k, v) { try { localStorage.setItem('tarefas.' + k, v); } catch {} }
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hoje = () => ymd(new Date());
+const somaDias = (s, n) => { const [a, m, d] = s.split('-').map(Number); return ymd(new Date(a, m - 1, d + n)); };
+const difDias = (a, b) => { const p = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((p(b) - p(a)) / 864e5); };
+const brData = s => s ? s.split('-').reverse().join('/') : '';
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const curta = s => { const [, m, d] = s.split('-').map(Number); return `${d} ${MESES[m - 1]}`; };
+const quando = t => { const d = new Date(t), h = new Date(); const mesmo = ymd(d) === ymd(h); return (mesmo ? 'hoje' : ymd(d) === somaDias(ymd(h), -1) ? 'ontem' : brData(ymd(d))) + ' às ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+
+// ---------------- API ----------------
+async function api(metodo, url, corpo) {
+  const r = await fetch(url, { method: metodo, headers: corpo ? { 'Content-Type': 'application/json' } : {}, body: corpo ? JSON.stringify(corpo) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('login'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Algo deu errado.');
+  return j;
+}
+function toast(msg, erro) {
+  const t = document.createElement('div'); t.className = 'toast' + (erro ? ' erro' : ''); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), erro ? 5000 : 2500);
+}
+async function carrega() {
+  const [me, pessoas, projetos, tarefas] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas')]);
+  Object.assign(S, { me, pessoas, projetos, tarefas });
+}
+async function recarrega() { try { await carrega(); desenha(); } catch (e) { if (e.message !== 'login') toast(e.message, true); } }
+
+// ---------------- regras ----------------
+const pessoa = e => S.pessoas.find(p => p.email === e);
+const nome = e => e ? ((pessoa(e) || {}).nome || e) : 'Sem responsável';
+const primeiroNome = e => nome(e).split(' ')[0];
+const projeto = id => S.projetos.find(p => p.id === id);
+const podeTudo = t => S.me.gestor || t.criadoPor === S.me.email;
+const podeStatus = t => podeTudo(t) || t.responsavel === S.me.email;
+function situacao(t) {
+  if (t.status === 'concluida') return 'ok';
+  if (!t.prazo) return 'sem';
+  const d = difDias(hoje(), t.prazo);
+  return d < 0 ? 'atrasada' : d === 0 ? 'hoje' : d <= 7 ? 'semana' : 'futuro';
+}
+function seloPrazo(t) {
+  const s = situacao(t);
+  if (s === 'ok') { const noPrazo = !t.prazo || ymd(new Date(t.concluidaEm)) <= t.prazo; return `<span class="selo ok">${noPrazo ? 'Concluída' : 'Concluída com atraso'}</span>`; }
+  if (s === 'sem') return '<span class="selo">Sem prazo</span>';
+  const d = difDias(hoje(), t.prazo);
+  if (s === 'atrasada') return `<span class="selo atrasada">${-d === 1 ? '1 dia' : -d + ' dias'} de atraso</span>`;
+  if (s === 'hoje') return '<span class="selo hoje">Vence hoje</span>';
+  if (d === 1) return '<span class="selo semana">Amanhã</span>';
+  return `<span class="selo ${s === 'semana' ? 'semana' : ''}">${curta(t.prazo)}</span>`;
+}
+// ordem: atrasadas primeiro, depois por prazo, depois por prioridade
+const ordem = (a, b) => (a.status === 'concluida') - (b.status === 'concluida') || (a.prazo || '9999') .localeCompare(b.prazo || '9999') || b.prioridade - a.prioridade || a.id - b.id;
+function noPrazo30(lista) {
+  const ini = Date.now() - 30 * 864e5;
+  const c = lista.filter(t => t.status === 'concluida' && t.concluidaEm >= ini);
+  const comPrazo = c.filter(t => t.prazo);
+  const ok = comPrazo.filter(t => ymd(new Date(t.concluidaEm)) <= t.prazo).length;
+  return { concl: c.length, pct: comPrazo.length ? Math.round(ok / comPrazo.length * 100) : null };
+}
+
+// ---------------- peças ----------------
+const CORES = ['#9d162e', '#2b6cb0', '#2f855a', '#b7791f', '#6b46c1', '#c05621', '#2c7a7b', '#b83280'];
+function avatar(e, tam) {
+  const p = pessoa(e), cls = 'av' + (tam ? ' ' + tam : '');
+  if (!e) return `<span class="${cls}" style="background:var(--line);color:var(--muted)" title="Sem responsável">?</span>`;
+  if (p && p.foto) return `<img class="${cls}" src="${esc(p.foto)}" alt="" title="${esc(nome(e))}" referrerpolicy="no-referrer">`;
+  let h = 0; for (const c of e) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const ini = nome(e).split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  return `<span class="${cls}" style="background:${CORES[h % CORES.length]}" title="${esc(nome(e))}">${esc(ini)}</span>`;
+}
+function chipProjeto(id) { const p = projeto(id); return p ? `<span class="proj"><i style="background:${esc(p.cor)}"></i>${esc(p.nome)}</span>` : ''; }
+function linha(t) {
+  const feito = t.status === 'concluida';
+  return `<div class="linha ${feito ? 'feita' : ''}" data-id="${t.id}">
+    <button class="chk ${feito ? 'on' : ''}" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="${feito ? 'Reabrir' : 'Concluir'}">${feito ? CHECK : ''}</button>
+    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status !== 'afazer' && !feito ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
+    <span class="pri p${t.prioridade} esconde-p">${t.prioridade >= 3 ? PRI[t.prioridade] : ''}</span>
+    <span class="esconde-p">${avatar(t.responsavel, 'p')}</span>
+    ${seloPrazo(t)}
+  </div>`;
+}
+const listaHtml = (ts, vazio) => ts.length ? `<div class="card lista">${ts.map(linha).join('')}</div>` : `<div class="card vazio">${vazio}</div>`;
+
+// ---------------- vistas ----------------
+function desenha() {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('ativo', b.dataset.v === S.vista));
+  $('#btnEu').innerHTML = avatar(S.me.email);
+  $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, prazos: vPrazos, equipe: vEquipe }[S.vista]();
+}
+
+function vInicio() {
+  const abertas = S.tarefas.filter(t => t.status !== 'concluida');
+  const atras = abertas.filter(t => situacao(t) === 'atrasada'), hj = abertas.filter(t => situacao(t) === 'hoje'), sem = abertas.filter(t => situacao(t) === 'semana');
+  const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0);
+  const conclMes = S.tarefas.filter(t => t.status === 'concluida' && t.concluidaEm >= ini.getTime());
+  const comPrazo = conclMes.filter(t => t.prazo), okMes = comPrazo.filter(t => ymd(new Date(t.concluidaEm)) <= t.prazo).length;
+  const minhas = abertas.filter(t => t.responsavel === S.me.email).sort(ordem);
+  const criei = abertas.filter(t => t.criadoPor === S.me.email && t.responsavel !== S.me.email).sort(ordem);
+  const h = new Date().getHours(), saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  return `<h2>${saud}, ${esc(primeiroNome(S.me.email))}</h2>
+    <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <div class="kpis">
+      <button class="kpi vermelho" data-ir="atrasadas"><div class="v">${atras.length}</div><div class="r">Atrasadas</div></button>
+      <button class="kpi ambar" data-ir="hoje"><div class="v">${hj.length}</div><div class="r">Vencem hoje</div></button>
+      <button class="kpi azul" data-ir="semana"><div class="v">${sem.length}</div><div class="r">Próximos 7 dias</div></button>
+      <div class="kpi verde"><div class="v">${conclMes.length}</div><div class="r">Concluídas no mês${comPrazo.length ? ` · ${Math.round(okMes / comPrazo.length * 100)}% no prazo` : ''}</div></div>
+    </div>
+    <div class="secao"><h3>Minhas tarefas <span class="n">${minhas.length}</span></h3>${listaHtml(minhas, 'Nenhuma tarefa aberta com você. 🎉')}</div>
+    ${criei.length ? `<div class="secao"><h3>Que eu passei para outras pessoas <span class="n">${criei.length}</span></h3>${listaHtml(criei, '')}</div>` : ''}
+    ${S.me.gestor && atras.length ? `<div class="secao"><h3>Atrasadas da equipe <span class="n">${atras.length}</span></h3>${listaHtml(atras.sort(ordem), '')}</div>` : ''}`;
+}
+
+function filtra() {
+  const f = S.f, q = f.q.trim().toLowerCase();
+  return S.tarefas.filter(t => {
+    if (q && !(t.titulo.toLowerCase().includes(q) || (t.descricao || '').toLowerCase().includes(q))) return false;
+    if (f.resp === '_eu' && t.responsavel !== S.me.email) return false;
+    if (f.resp === '_sem' && t.responsavel) return false;
+    if (f.resp && f.resp[0] !== '_' && t.responsavel !== f.resp) return false;
+    if (f.proj === '_sem' && t.projetoId) return false;
+    if (f.proj && f.proj !== '_sem' && t.projetoId !== +f.proj) return false;
+    if (S.modo === 'lista') {
+      if (f.sit === 'abertas' && t.status === 'concluida') return false;
+      if (f.sit && f.sit !== 'abertas' && f.sit !== 'todas' && t.status !== f.sit) return false;
+    }
+    if (f.prazo) { const s = situacao(t); if (f.prazo === 'semana' ? !['hoje', 'semana'].includes(s) : s !== f.prazo) return false; }
+    return true;
+  }).sort(ordem);
+}
+function vTarefas() {
+  const f = S.f, ativos = S.pessoas.filter(p => p.ativo);
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const ts = filtra();
+  let corpo;
+  if (S.modo === 'lista') corpo = listaHtml(ts, 'Nenhuma tarefa com esses filtros.');
+  else {
+    // no quadro, concluídas só dos últimos 14 dias para não lotar a coluna
+    const lim = Date.now() - 14 * 864e5;
+    corpo = `<div class="quadro">${STATUS.map(([k, n]) => {
+      const col = ts.filter(t => t.status === k && (k !== 'concluida' || t.concluidaEm >= lim));
+      return `<div class="coluna" data-col="${k}"><h4><span>${n}</span><span>${col.length}</span></h4>${col.map(t => `
+        <div class="cartao" data-id="${t.id}" draggable="${podeStatus(t)}">
+          <div class="t">${esc(t.titulo)}</div>
+          <div class="m">${seloPrazo(t)}${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}${chipProjeto(t.projetoId)}${avatar(t.responsavel, 'p')}</div>
+        </div>`).join('')}</div>`;
+    }).join('')}</div><p class="sub" style="margin-top:8px;font-size:12.5px">Arraste os cartões entre as colunas para mudar a situação. A coluna Concluída mostra os últimos 14 dias.</p>`;
+  }
+  return `<h2>Tarefas</h2><p class="sub">${ts.length} ${ts.length === 1 ? 'tarefa' : 'tarefas'}</p>
+    <div class="filtros">
+      <input type="search" id="fQ" placeholder="Buscar tarefa…" value="${esc(f.q)}">
+      <select id="fResp">${opt('', 'Todas as pessoas', f.resp)}${opt('_eu', 'Comigo', f.resp)}${opt('_sem', 'Sem responsável', f.resp)}${ativos.map(p => opt(p.email, p.nome, f.resp)).join('')}</select>
+      <select id="fProj">${opt('', 'Todos os projetos', f.proj)}${opt('_sem', 'Sem projeto', f.proj)}${S.projetos.filter(p => p.ativo).map(p => opt(p.id, p.nome, f.proj)).join('')}</select>
+      ${S.modo === 'lista' ? `<select id="fSit">${opt('abertas', 'Abertas', f.sit)}${opt('todas', 'Todas', f.sit)}${STATUS.map(([k, n]) => opt(k, n, f.sit)).join('')}</select>` : ''}
+      <select id="fPrazo">${opt('', 'Qualquer prazo', f.prazo)}${opt('atrasada', 'Atrasadas', f.prazo)}${opt('hoje', 'Vencem hoje', f.prazo)}${opt('semana', 'Próximos 7 dias', f.prazo)}${opt('sem', 'Sem prazo', f.prazo)}</select>
+      <div class="alterna"><button data-modo="lista" class="${S.modo === 'lista' ? 'ativo' : ''}">Lista</button><button data-modo="quadro" class="${S.modo === 'quadro' ? 'ativo' : ''}">Quadro</button></div>
+    </div>${corpo}`;
+}
+
+function vPrazos() {
+  if (!S.mes) { const d = new Date(); S.mes = [d.getFullYear(), d.getMonth()]; }
+  const [ano, mes] = S.mes, h = hoje();
+  const prim = new Date(ano, mes, 1), ini = new Date(ano, mes, 1 - prim.getDay());
+  const porDia = {}; for (const t of S.tarefas) if (t.prazo) (porDia[t.prazo] = porDia[t.prazo] || []).push(t);
+  let cel = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'].map(d => `<div class="dsem">${d}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + i), k = ymd(d);
+    if (i === 35 && d.getMonth() !== mes) break;
+    const ts = (porDia[k] || []).sort(ordem);
+    cel += `<div class="dia ${d.getMonth() !== mes ? 'fora' : ''} ${k === h ? 'hoje' : ''} ${k === S.diaSel ? 'sel' : ''}" data-dia="${k}">
+      <span class="num">${d.getDate()}</span>${ts.slice(0, 3).map(t => `<span class="ch ${situacao(t)}" title="${esc(t.titulo)}">${esc(t.titulo)}</span>`).join('')}${ts.length > 3 ? `<span class="mais">+${ts.length - 3}</span>` : ''}</div>`;
+  }
+  const abertas = S.tarefas.filter(t => t.status !== 'concluida').sort(ordem);
+  let lado;
+  if (S.diaSel) {
+    const ts = (porDia[S.diaSel] || []).sort(ordem);
+    lado = `<div class="secao" style="margin-top:0"><h3>${new Date(S.diaSel + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} <span class="n">${ts.length}</span>
+      <button class="btn peq" data-limpa-dia style="margin-left:auto">Ver todos</button></h3>${listaHtml(ts, 'Nenhuma tarefa vence neste dia.')}</div>`;
+  } else {
+    const grupos = [['Atrasadas', t => situacao(t) === 'atrasada'], ['Hoje', t => t.prazo === h], ['Amanhã', t => t.prazo === somaDias(h, 1)],
+      ['Próximos 7 dias', t => t.prazo > somaDias(h, 1) && t.prazo <= somaDias(h, 7)], ['Depois', t => t.prazo > somaDias(h, 7)], ['Sem prazo', t => !t.prazo]];
+    lado = grupos.map(([n, fn]) => { const ts = abertas.filter(fn); return ts.length ? `<div class="secao" style="margin-top:0;margin-bottom:20px"><h3>${n} <span class="n">${ts.length}</span></h3>${listaHtml(ts, '')}</div>` : ''; }).join('') || '<div class="card vazio">Nenhuma tarefa aberta.</div>';
+  }
+  return `<h2>Prazos</h2><p class="sub">Calendário de entregas. Clique num dia para ver o que vence nele.</p>
+    <div class="prazos-grid">
+      <div><div class="cal-topo"><button class="btn peq" data-mes="-1" aria-label="Mês anterior">‹</button><strong>${(s => s[0].toUpperCase() + s.slice(1))(prim.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }))}</strong><button class="btn peq" data-mes="1" aria-label="Próximo mês">›</button><button class="btn peq" data-mes="0">Hoje</button></div>
+      <div class="cal">${cel}</div></div>
+      <div>${lado}</div>
+    </div>`;
+}
+
+function vEquipe() {
+  const h = hoje(), lista = S.pessoas.filter(p => S.me.gestor || p.ativo);
+  const linhas = lista.map(p => {
+    const ts = S.tarefas.filter(t => t.responsavel === p.email), ab = ts.filter(t => t.status !== 'concluida');
+    const atr = ab.filter(t => situacao(t) === 'atrasada').length, sem = ab.filter(t => t.prazo && t.prazo >= h && t.prazo <= somaDias(h, 7)).length;
+    const { concl, pct } = noPrazo30(ts);
+    return `<tr class="click ${p.ativo ? '' : 'inativo'}" data-pessoa="${esc(p.email)}">
+      <td><div class="pess">${avatar(p.email)}<div><b>${esc(p.nome)}${p.papel === 'gestor' ? '<span class="tag">gestor</span>' : ''}${p.ativo ? '' : ' <small>(desativado)</small>'}</b><small>${esc([p.cargo, p.area].filter(Boolean).join(' · ') || p.email)}</small></div></div></td>
+      <td>${ab.length}</td>
+      <td style="color:${atr ? 'var(--red)' : 'inherit'};font-weight:${atr ? 600 : 400}">${atr}</td>
+      <td class="esconde-p">${sem}</td>
+      <td class="esconde-p">${concl}</td>
+      <td class="esconde-p">${pct == null ? '<span class="st">—</span>' : `<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">${pct}%<div class="barra"><i style="width:${pct}%;background:${pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)'}"></i></div></div>`}</td>
+      ${S.me.gestor || p.email === S.me.email ? `<td><button class="btn peq" data-edita-pessoa="${esc(p.email)}">Editar</button></td>` : '<td></td>'}
+    </tr>`;
+  }).join('');
+  const projs = S.projetos.filter(p => S.me.gestor || p.ativo);
+  return `<h2>Equipe</h2><p class="sub">Carga de trabalho e cumprimento de prazos de cada pessoa. Clique numa pessoa para ver as tarefas dela.</p>
+    ${S.me.gestor ? '<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn" id="btnAddPessoa">+ Adicionar pessoa</button></div>' : ''}
+    <div class="card" style="overflow-x:auto"><table class="tabela">
+      <thead><tr><th>Pessoa</th><th>Abertas</th><th>Atrasadas</th><th class="esconde-p">Vencem em 7 dias</th><th class="esconde-p">Concluídas (30 dias)</th><th class="esconde-p">No prazo (30 dias)</th><th></th></tr></thead>
+      <tbody>${linhas || '<tr><td colspan="7" class="vazio">Ninguém na equipe ainda.</td></tr>'}</tbody></table></div>
+    <div class="secao"><h3>Projetos <span class="n">${projs.length}</span>${S.me.gestor ? '<button class="btn peq" id="btnAddProj" style="margin-left:auto">+ Novo projeto</button>' : ''}</h3>
+      ${projs.length ? `<div class="card lista">${projs.map(p => {
+        const ab = S.tarefas.filter(t => t.projetoId === p.id && t.status !== 'concluida'), atr = ab.filter(t => situacao(t) === 'atrasada').length;
+        return `<div class="linha ${p.ativo ? '' : 'inativo'}" data-proj="${p.id}" style="grid-template-columns:16px 1fr auto auto">
+          <i style="width:12px;height:12px;border-radius:3px;background:${esc(p.cor)}"></i>
+          <div class="tit"><span>${esc(p.nome)}${p.ativo ? '' : ' (arquivado)'}</span></div>
+          <span class="st">${ab.length} abertas${atr ? ` · <b style="color:var(--red)">${atr} atrasadas</b>` : ''}</span>
+          ${S.me.gestor ? `<button class="btn peq" data-edita-proj="${p.id}">Editar</button>` : '<span></span>'}
+        </div>`; }).join('')}</div>` : `<div class="card vazio">Nenhum projeto. ${S.me.gestor ? 'Projetos ajudam a agrupar tarefas (ex.: Inauguração Loja X, Campanha de Natal).' : ''}</div>`}
+    </div>`;
+}
+
+// ---------------- janelas ----------------
+function abreJanela(titulo, corpo, rodape) {
+  fechaJanela();
+  const f = document.createElement('div'); f.className = 'fundo'; f.id = 'janela';
+  f.innerHTML = `<div class="janela" role="dialog" aria-modal="true"><div class="cab"><h3>${titulo}</h3><button data-fecha aria-label="Fechar">×</button></div><div class="corpo">${corpo}</div>${rodape ? `<div class="rodape">${rodape}</div>` : ''}</div>`;
+  f.addEventListener('mousedown', e => { if (e.target === f) fechaJanela(); });
+  f.querySelector('[data-fecha]').onclick = fechaJanela;
+  document.body.appendChild(f); document.body.style.overflow = 'hidden';
+  const p = f.querySelector('input:not([disabled]),textarea:not([disabled])'); if (p && !matchMedia('(max-width:640px)').matches) p.focus();
+  return f;
+}
+function fechaJanela() { const j = $('#janela'); if (j) j.remove(); document.body.style.overflow = ''; }
+
+function janelaTarefa(t, padrao) {
+  const nova = !t; t = t || { titulo: '', descricao: '', responsavel: S.me.email, projetoId: null, prioridade: 2, status: 'afazer', prazo: '', ...padrao };
+  const tudo = nova || podeTudo(t), st = nova || podeStatus(t), dis = tudo ? '' : 'disabled';
+  const ativos = S.pessoas.filter(p => p.ativo || p.email === t.responsavel);
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel ?? '') === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const corpo = `
+    ${!nova && !tudo ? `<div class="aviso">${st ? 'Você é o responsável: pode mudar a situação e comentar. Prazo e responsável ficam com quem criou a tarefa ou com o gestor.' : 'Você pode ver e comentar esta tarefa.'}</div>` : ''}
+    <label class="campo"><span>O que precisa ser feito</span><input id="tTit" maxlength="160" value="${esc(t.titulo)}" ${dis} placeholder="Ex.: Montar vitrine de Natal da loja Centro"></label>
+    <label class="campo"><span>Detalhes</span><textarea id="tDesc" maxlength="5000" ${dis} placeholder="Contexto, passos, links…">${esc(t.descricao)}</textarea></label>
+    <div class="duas">
+      <label class="campo"><span>Responsável</span><select id="tResp" ${dis}>${opt('', 'Sem responsável', t.responsavel)}${ativos.map(p => opt(p.email, p.nome + (p.email === S.me.email ? ' (eu)' : ''), t.responsavel)).join('')}</select></label>
+      <label class="campo"><span>Prazo</span><input type="date" id="tPrazo" value="${esc(t.prazo || '')}" ${dis}></label>
+      <label class="campo"><span>Situação</span><select id="tSt" ${st ? '' : 'disabled'}>${STATUS.map(([k, n]) => opt(k, n, t.status)).join('')}</select></label>
+      <label class="campo"><span>Prioridade</span><select id="tPri" ${dis}>${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select></label>
+    </div>
+    <label class="campo"><span>Projeto</span><select id="tProj" ${dis}>${opt('', 'Sem projeto', t.projetoId)}${S.projetos.filter(p => p.ativo || p.id === t.projetoId).map(p => opt(p.id, p.nome, t.projetoId)).join('')}</select></label>
+    ${nova ? '' : `<div class="hist"><h4>Comentários e histórico</h4><div id="tHist"><div class="st">Carregando…</div></div>
+      <div class="novo-coment"><textarea id="tCom" maxlength="2000" placeholder="Escreva um comentário…"></textarea><button class="btn" id="tComBtn">Enviar</button></div>
+      <p class="st" style="margin:10px 0 0">Criada por ${esc(nome(t.criadoPor))} em ${brData(ymd(new Date(t.criadoEm)))}</p></div>`}`;
+  const rodape = `${!nova && podeTudo(t) ? '<button class="btn perigo esq" id="tDel">Apagar</button>' : ''}<button class="btn" data-fecha2>${st ? 'Cancelar' : 'Fechar'}</button>${st ? `<button class="btn prim" id="tSalva">${nova ? 'Criar tarefa' : 'Salvar'}</button>` : ''}`;
+  const j = abreJanela(nova ? 'Nova tarefa' : 'Tarefa', corpo, rodape);
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  const salva = j.querySelector('#tSalva');
+  if (salva) salva.onclick = async () => {
+    const dados = tudo ? { titulo: $('#tTit').value, descricao: $('#tDesc').value, responsavel: $('#tResp').value || null, prazo: $('#tPrazo').value || null,
+      status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null } : { status: $('#tSt').value };
+    if (tudo && !dados.titulo.trim()) { toast('Dê um título à tarefa.', true); $('#tTit').focus(); return; }
+    salva.disabled = true;
+    try { await api(nova ? 'POST' : 'PUT', nova ? '/api/tarefas' : '/api/tarefas/' + t.id, dados); fechaJanela(); toast(nova ? 'Tarefa criada.' : 'Tarefa salva.'); await recarrega(); }
+    catch (e) { toast(e.message, true); salva.disabled = false; }
+  };
+  const del = j.querySelector('#tDel');
+  if (del) del.onclick = async () => {
+    if (!confirm('Apagar esta tarefa e os comentários dela? Não dá para desfazer.')) return;
+    try { await api('DELETE', '/api/tarefas/' + t.id); fechaJanela(); toast('Tarefa apagada.'); await recarrega(); } catch (e) { toast(e.message, true); }
+  };
+  if (!nova) {
+    const carregaHist = async () => {
+      try {
+        const cs = await api('GET', `/api/tarefas/${t.id}/comentarios`);
+        $('#tHist').innerHTML = cs.slice().reverse().map(c => c.tipo === 'evento'
+          ? `<div class="ev evento"><span class="ponto"><i></i></span><div class="txt">${esc(primeiroNome(c.autor))} ${esc(c.texto)}<small>${quando(c.em)}</small></div></div>`
+          : `<div class="ev">${avatar(c.autor, 'p')}<div class="txt"><b>${esc(nome(c.autor))}</b><small>${quando(c.em)}</small>${c.autor === S.me.email || S.me.gestor ? `<button class="apaga" data-apaga-com="${c.id}">apagar</button>` : ''}<div class="nota">${esc(c.texto)}</div></div></div>`).join('') || '<div class="st">Nada ainda.</div>';
+      } catch (e) { $('#tHist').innerHTML = `<div class="st">${esc(e.message)}</div>`; }
+    };
+    carregaHist();
+    j.querySelector('#tComBtn').onclick = async () => {
+      const tx = $('#tCom').value.trim(); if (!tx) return;
+      try { await api('POST', `/api/tarefas/${t.id}/comentarios`, { texto: tx }); $('#tCom').value = ''; carregaHist(); recarregaSilencioso(); } catch (e) { toast(e.message, true); }
+    };
+    j.querySelector('#tHist').addEventListener('click', async e => {
+      const b = e.target.closest('[data-apaga-com]'); if (!b || !confirm('Apagar este comentário?')) return;
+      try { await api('DELETE', '/api/comentarios/' + b.dataset.apagaCom); carregaHist(); recarregaSilencioso(); } catch (er) { toast(er.message, true); }
+    });
+  }
+}
+async function recarregaSilencioso() { try { await carrega(); if (!$('#janela')) desenha(); } catch {} }
+
+function janelaPessoa(p) {
+  const nova = !p; p = p || { email: '', nome: '', cargo: '', area: '', papel: 'membro', ativo: true };
+  const proprio = p.email === S.me.email, gestorEdita = S.me.gestor && !proprio && !p.fixo;
+  const corpo = `
+    ${nova ? '<div class="aviso">Cadastre alguém antes do primeiro acesso para já poder passar tarefas. A pessoa entra com a conta Google da empresa.</div>' : ''}
+    <label class="campo"><span>E-mail</span><input id="pEmail" type="email" value="${esc(p.email)}" ${nova ? '' : 'disabled'} placeholder="nome@darmand.com.br"></label>
+    <label class="campo"><span>Nome</span><input id="pNome" maxlength="80" value="${esc(p.nome)}"></label>
+    <div class="duas">
+      <label class="campo"><span>Cargo</span><input id="pCargo" maxlength="60" value="${esc(p.cargo)}" placeholder="Ex.: Gerente de loja"></label>
+      <label class="campo"><span>Área / loja</span><input id="pArea" maxlength="60" value="${esc(p.area)}" placeholder="Ex.: Loja Centro"></label>
+    </div>
+    ${nova || gestorEdita ? `<div class="duas">
+      <label class="campo"><span>Papel</span><select id="pPapel"><option value="membro" ${p.papel !== 'gestor' ? 'selected' : ''}>Membro</option><option value="gestor" ${p.papel === 'gestor' ? 'selected' : ''}>Gestor (vê e edita tudo)</option></select></label>
+      ${nova ? '' : `<label class="campo"><span>Acesso</span><select id="pAtivo"><option value="1" ${p.ativo ? 'selected' : ''}>Ativo</option><option value="0" ${p.ativo ? '' : 'selected'}>Desativado</option></select></label>`}
+    </div>` : p.fixo ? '<div class="aviso">Gestor fixo (definido no Railway, em ADMIN_EMAILS).</div>' : ''}`;
+  const j = abreJanela(nova ? 'Adicionar pessoa' : 'Editar pessoa', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="pSalva">Salvar</button>');
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  j.querySelector('#pSalva').onclick = async () => {
+    const d = { nome: $('#pNome').value, cargo: $('#pCargo').value, area: $('#pArea').value };
+    if ($('#pPapel')) d.papel = $('#pPapel').value;
+    if ($('#pAtivo')) d.ativo = $('#pAtivo').value === '1';
+    try {
+      if (nova) await api('POST', '/api/pessoas', { ...d, email: $('#pEmail').value });
+      else await api('PUT', '/api/pessoas/' + encodeURIComponent(p.email), d);
+      fechaJanela(); toast('Salvo.'); await recarrega();
+    } catch (e) { toast(e.message, true); }
+  };
+}
+
+function janelaProjeto(p) {
+  const nova = !p; p = p || { nome: '', cor: '#9d162e', ativo: true };
+  const corpo = `<label class="campo"><span>Nome do projeto</span><input id="jNome" maxlength="60" value="${esc(p.nome)}" placeholder="Ex.: Inauguração Loja Norte"></label>
+    <div class="duas"><label class="campo"><span>Cor</span><input id="jCor" type="color" value="${esc(p.cor)}" style="height:40px;padding:4px"></label>
+    ${nova ? '' : `<label class="campo"><span>Situação</span><select id="jAtivo"><option value="1" ${p.ativo ? 'selected' : ''}>Ativo</option><option value="0" ${p.ativo ? '' : 'selected'}>Arquivado</option></select></label>`}</div>`;
+  const j = abreJanela(nova ? 'Novo projeto' : 'Editar projeto', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="jSalva">Salvar</button>');
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  j.querySelector('#jSalva').onclick = async () => {
+    const d = { nome: $('#jNome').value, cor: $('#jCor').value }; if ($('#jAtivo')) d.ativo = $('#jAtivo').value === '1';
+    try { await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast('Salvo.'); await recarrega(); } catch (e) { toast(e.message, true); }
+  };
+}
+
+// ---------------- ações ----------------
+async function mudaStatus(id, status) {
+  const t = S.tarefas.find(x => x.id === id); if (!t || t.status === status) return;
+  const ant = t.status; t.status = status; if (status === 'concluida') t.concluidaEm = Date.now(); desenha();
+  try { await api('PUT', '/api/tarefas/' + id, { status }); if (status === 'concluida') toast('Tarefa concluída.'); recarregaSilencioso(); }
+  catch (e) { t.status = ant; desenha(); toast(e.message, true); }
+}
+
+document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; desenha(); window.scrollTo(0, 0); };
+$('#btnNova').onclick = () => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
+$('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu');
+  p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div><button id="sair">Sair</button>`;
+  p.classList.toggle('oculto'); $('#sair').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; }; };
+document.addEventListener('click', e => { if (!e.target.closest('.menu-eu')) $('#popEu').classList.add('oculto'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaJanela(); });
+
+const main = $('#main');
+main.addEventListener('click', e => {
+  const chk = e.target.closest('[data-chk]');
+  if (chk) { e.stopPropagation(); const t = S.tarefas.find(x => x.id === +chk.dataset.chk); mudaStatus(t.id, t.status === 'concluida' ? 'afazer' : 'concluida'); return; }
+  const ir = e.target.closest('[data-ir]');
+  if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); return; }
+  const md = e.target.closest('[data-modo]'); if (md) { S.modo = md.dataset.modo; localSet('modo', S.modo); desenha(); return; }
+  const mes = e.target.closest('[data-mes]');
+  if (mes) { const n = +mes.dataset.mes; if (n === 0) { const d = new Date(); S.mes = [d.getFullYear(), d.getMonth()]; } else { const d = new Date(S.mes[0], S.mes[1] + n, 1); S.mes = [d.getFullYear(), d.getMonth()]; } desenha(); return; }
+  if (e.target.closest('[data-limpa-dia]')) { S.diaSel = null; desenha(); return; }
+  const dia = e.target.closest('[data-dia]'); if (dia) { S.diaSel = S.diaSel === dia.dataset.dia ? null : dia.dataset.dia; desenha(); return; }
+  const ep = e.target.closest('[data-edita-pessoa]'); if (ep) { e.stopPropagation(); janelaPessoa(pessoa(ep.dataset.editaPessoa)); return; }
+  const ej = e.target.closest('[data-edita-proj]'); if (ej) { e.stopPropagation(); janelaProjeto(projeto(+ej.dataset.editaProj)); return; }
+  if (e.target.closest('#btnAddPessoa')) { janelaPessoa(null); return; }
+  if (e.target.closest('#btnAddProj')) { janelaProjeto(null); return; }
+  const pr = e.target.closest('[data-pessoa]'); if (pr) { S.vista = 'tarefas'; S.f = { q: '', resp: pr.dataset.pessoa, proj: '', sit: 'abertas', prazo: '' }; desenha(); return; }
+  const pj = e.target.closest('[data-proj]'); if (pj) { S.vista = 'tarefas'; S.f = { q: '', resp: '', proj: pj.dataset.proj, sit: 'abertas', prazo: '' }; desenha(); return; }
+  const it = e.target.closest('[data-id]'); if (it) { const t = S.tarefas.find(x => x.id === +it.dataset.id); if (t) janelaTarefa(t); }
+});
+main.addEventListener('input', e => {
+  const map = { fQ: 'q', fResp: 'resp', fProj: 'proj', fSit: 'sit', fPrazo: 'prazo' }, k = map[e.target.id]; if (!k) return;
+  S.f[k] = e.target.value;
+  if (k === 'q') { const pos = e.target.selectionStart; desenha(); const i = $('#fQ'); i.focus(); i.setSelectionRange(pos, pos); } else desenha();
+});
+// arrastar no quadro
+let arrastado = null;
+main.addEventListener('dragstart', e => { const c = e.target.closest('.cartao'); if (!c) return; arrastado = +c.dataset.id; c.classList.add('arrastando'); e.dataTransfer.effectAllowed = 'move'; });
+main.addEventListener('dragend', e => { const c = e.target.closest('.cartao'); if (c) c.classList.remove('arrastando'); document.querySelectorAll('.coluna.alvo').forEach(x => x.classList.remove('alvo')); });
+main.addEventListener('dragover', e => { const col = e.target.closest('.coluna'); if (!col || arrastado == null) return; e.preventDefault(); document.querySelectorAll('.coluna.alvo').forEach(x => x !== col && x.classList.remove('alvo')); col.classList.add('alvo'); });
+main.addEventListener('drop', e => { const col = e.target.closest('.coluna'); if (!col || arrastado == null) return; e.preventDefault(); const id = arrastado; arrastado = null; mudaStatus(id, col.dataset.col); });
+
+// atualiza sozinho a cada minuto e ao voltar para a aba
+setInterval(() => { if (!document.hidden) recarregaSilencioso(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) recarregaSilencioso(); });
+
+recarrega();
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarefas DARMAND · Entrar</title>
+<link rel="icon" type="image/png" href="/marca/icone-64.png">
+<link rel="apple-touch-icon" href="/marca/icone-180.png">
+<meta name="theme-color" content="#9d162e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--brand:#9d162e;--bg:#f5f4f2;--surface:#fff;--ink:#1d1d1b;--muted:#76757a;--line:#e7e5e2}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--surface:#1f1f1f;--ink:#f1f0ee;--muted:#a3a2a6;--line:#333}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;padding:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 28px;max-width:380px;width:100%;text-align:center}
+.marca img{display:block;width:180px;max-width:70%;height:auto;margin:0 auto}
+h1{font-size:20px;font-weight:600;margin:20px 0 6px}
+p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 22px}
+#g{display:flex;justify-content:center;min-height:44px}
+#erro{color:#c0392b;font-size:13.5px;margin-top:14px;min-height:18px}
+#dev{display:none;margin-top:20px;padding-top:16px;border-top:1px dashed var(--line);text-align:left;font-size:13px}
+#dev input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;margin:6px 0}
+#dev button{width:100%;padding:9px;border:0;border-radius:8px;background:var(--brand);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+<main class="card">
+  <picture class="marca"><source srcset="/marca/logo-branco.png" media="(prefers-color-scheme: dark)"><img src="/marca/logo-cor.png" alt="DARMAND Moda Masculina" width="457" height="205"></picture>
+  <h1>Tarefas e Prazos</h1>
+  <p>Entre com a sua conta Google da empresa (@__DOMINIO__).</p>
+  <div id="g"></div>
+  <div id="erro" role="alert"></div>
+  <form id="dev" action="/dev/entrar" method="get">
+    <strong>Modo de teste</strong> (só no computador)
+    <input name="email" type="email" placeholder="e-mail" required>
+    <input name="nome" placeholder="nome">
+    <button>Entrar sem Google</button>
+  </form>
+</main>
+<script>
+const DEV='__DEV__';
+if(DEV)document.getElementById('dev').style.display='block';
+async function entrar(r){
+  const e=document.getElementById('erro');e.textContent='Entrando…';
+  try{const x=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:r.credential})});
+    if(x.ok){location.href='/';return}const j=await x.json().catch(()=>({}));e.textContent=j.erro||'Não foi possível entrar.'}
+  catch(err){e.textContent='Sem conexão com o servidor.'}}
+window.onload=()=>{
+  if(!window.google){if(!DEV)document.getElementById('erro').textContent='Não foi possível carregar o login do Google.';return}
+  google.accounts.id.initialize({client_id:'__GOOGLE_CLIENT_ID__',callback:entrar,hd:'__DOMINIO__',ux_mode:'popup'});
+  google.accounts.id.renderButton(document.getElementById('g'),{theme:'outline',size:'large',text:'signin_with',shape:'pill',locale:'pt-BR'});
+};
+</script>
+</body>
+</html>
