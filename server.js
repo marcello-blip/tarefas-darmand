@@ -53,11 +53,18 @@ async function initDb() {
     criado_em timestamptz NOT NULL DEFAULT now(), ultimo_acesso timestamptz)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS projetos (
     id serial PRIMARY KEY, nome text NOT NULL, cor text NOT NULL DEFAULT '#9d162e', ativo boolean NOT NULL DEFAULT true,
+    descricao text, responsavel text, inicio date, fim date, status text NOT NULL DEFAULT 'andamento',
     criado_em timestamptz NOT NULL DEFAULT now())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS tarefas (
     id serial PRIMARY KEY, titulo text NOT NULL, descricao text, responsavel text, criado_por text NOT NULL,
-    projeto_id integer, prioridade integer NOT NULL DEFAULT 2, status text NOT NULL DEFAULT 'afazer', prazo date,
+    projeto_id integer, prioridade integer NOT NULL DEFAULT 2, status text NOT NULL DEFAULT 'afazer', inicio date, prazo date,
     criado_em timestamptz NOT NULL DEFAULT now(), atualizado_em timestamptz NOT NULL DEFAULT now(), concluida_em timestamptz)`);
+  // colunas que vieram depois da primeira versão (bancos já criados recebem aqui)
+  for (const sql of [
+    'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS descricao text', 'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS responsavel text',
+    'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS inicio date', 'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS fim date',
+    "ALTER TABLE projetos ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'andamento'", 'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS inicio date',
+  ]) { try { await pool.query(sql); } catch (e) { if (process.env.DATABASE_URL !== 'memoria') throw e; } }
   await pool.query(`CREATE TABLE IF NOT EXISTS comentarios (
     id serial PRIMARY KEY, tarefa_id integer NOT NULL, autor text NOT NULL, tipo text NOT NULL DEFAULT 'nota',
     texto text NOT NULL, criado_em timestamptz NOT NULL DEFAULT now())`);
@@ -91,7 +98,7 @@ const emailOk = e => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(String(e || ''));
 function tarefaOut(t, nComent) {
   return {
     id: t.id, titulo: t.titulo, descricao: t.descricao || '', responsavel: t.responsavel || null, criadoPor: t.criado_por,
-    projetoId: t.projeto_id || null, prioridade: t.prioridade, status: t.status, prazo: fmtData(t.prazo),
+    projetoId: t.projeto_id || null, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo),
     criadoEm: ms(t.criado_em), atualizadoEm: ms(t.atualizado_em), concluidaEm: ms(t.concluida_em), comentarios: nComent || 0,
   };
 }
@@ -213,22 +220,47 @@ app.put('/api/pessoas/:email', auth, express.json({ limit: '10kb' }), async (req
 });
 
 // ---------- projetos ----------
+// Cadastro: nome, cor, descrição, responsável (dono do projeto), início, fim previsto e situação.
+// Só gestores criam; o gestor ou o responsável pelo projeto editam.
 const corOk = c => /^#[0-9a-f]{6}$/i.test(String(c || ''));
+const PROJ_STATUS = ['planejamento', 'andamento', 'pausado', 'concluido', 'cancelado'];
+const projetoOut = p => ({ id: p.id, nome: p.nome, cor: p.cor, descricao: p.descricao || '', responsavel: p.responsavel || null,
+  inicio: fmtData(p.inicio), fim: fmtData(p.fim), status: p.status || 'andamento', ativo: !['concluido', 'cancelado'].includes(p.status), criadoEm: ms(p.criado_em) });
+async function validaProjeto(b, ant) {
+  const o = { nome: ant.nome, cor: ant.cor, descricao: ant.descricao, responsavel: ant.responsavel, inicio: fmtData(ant.inicio), fim: fmtData(ant.fim), status: ant.status || 'andamento' };
+  if (b.nome !== undefined) o.nome = txt(b.nome, 80);
+  if (!o.nome) return { erro: 'Dê um nome ao projeto.' };
+  if (b.cor !== undefined && corOk(b.cor)) o.cor = b.cor;
+  if (b.descricao !== undefined) o.descricao = txt(b.descricao, 3000);
+  if (b.responsavel !== undefined) {
+    o.responsavel = b.responsavel ? String(b.responsavel).toLowerCase() : null;
+    if (o.responsavel) { const r = await pool.query('SELECT ativo FROM pessoas WHERE email=$1', [o.responsavel]); if (!r.rows[0] || !r.rows[0].ativo) return { erro: 'Responsável não está na equipe.' }; }
+  }
+  for (const k of ['inicio', 'fim']) if (b[k] !== undefined) { o[k] = dataOk(b[k]); if (o[k] === undefined) return { erro: 'Data inválida.' }; }
+  if (o.inicio && o.fim && o.fim < o.inicio) return { erro: 'O fim previsto não pode ser antes do início.' };
+  if (b.status !== undefined) { if (!PROJ_STATUS.includes(b.status)) return { erro: 'Situação inválida.' }; o.status = b.status; }
+  return { dados: o };
+}
 app.get('/api/projetos', auth, async (req, res) => {
-  const r = await pool.query('SELECT id, nome, cor, ativo FROM projetos ORDER BY nome');
-  res.json(r.rows);
+  const r = await pool.query('SELECT * FROM projetos ORDER BY nome');
+  res.json(r.rows.map(projetoOut));
 });
-app.post('/api/projetos', auth, soGestor, express.json({ limit: '10kb' }), async (req, res) => {
-  const nome = txt(req.body && req.body.nome, 60); if (!nome) return res.status(400).json({ erro: 'Dê um nome ao projeto.' });
-  const r = await pool.query('INSERT INTO projetos (nome, cor) VALUES ($1,$2) RETURNING id', [nome, corOk(req.body.cor) ? req.body.cor : '#9d162e']);
+app.post('/api/projetos', auth, soGestor, express.json({ limit: '20kb' }), async (req, res) => {
+  const v = await validaProjeto(req.body || {}, { cor: '#9d162e', status: 'andamento' }); if (v.erro) return res.status(400).json(v);
+  const d = v.dados;
+  const r = await pool.query('INSERT INTO projetos (nome, cor, descricao, responsavel, inicio, fim, status) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+    [d.nome, d.cor, d.descricao, d.responsavel, d.inicio, d.fim, d.status]);
   res.json({ id: r.rows[0].id });
 });
-app.put('/api/projetos/:id', auth, soGestor, express.json({ limit: '10kb' }), async (req, res) => {
-  const id = parseInt(req.params.id, 10), b = req.body || {};
+app.put('/api/projetos/:id', auth, express.json({ limit: '20kb' }), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
   const r = await pool.query('SELECT * FROM projetos WHERE id=$1', [id]); const p = r.rows[0];
   if (!p) return res.status(404).json({ erro: 'Projeto não encontrado.' });
-  await pool.query('UPDATE projetos SET nome=$2, cor=$3, ativo=$4 WHERE id=$1',
-    [id, txt(b.nome, 60) || p.nome, corOk(b.cor) ? b.cor : p.cor, b.ativo === undefined ? p.ativo : !!b.ativo]);
+  if (!req.gestor && p.responsavel !== req.email) return res.status(403).json({ erro: 'Só o gestor ou o responsável pelo projeto podem editá-lo.' });
+  const v = await validaProjeto(req.body || {}, p); if (v.erro) return res.status(400).json(v);
+  const d = v.dados;
+  await pool.query('UPDATE projetos SET nome=$2, cor=$3, descricao=$4, responsavel=$5, inicio=$6, fim=$7, status=$8 WHERE id=$1',
+    [id, d.nome, d.cor, d.descricao, d.responsavel, d.inicio, d.fim, d.status]);
   res.json({ ok: true });
 });
 
@@ -262,15 +294,17 @@ async function validaTarefa(b, parcial) {
   if (b.prioridade !== undefined) { out.prioridade = parseInt(b.prioridade, 10); if (!PRIORIDADE_NOME[out.prioridade]) return erro('Prioridade inválida.'); }
   if (b.status !== undefined) { out.status = String(b.status); if (!STATUS.includes(out.status)) return erro('Situação inválida.'); }
   if (b.prazo !== undefined) { out.prazo = dataOk(b.prazo); if (out.prazo === undefined) return erro('Prazo inválido.'); }
+  if (b.inicio !== undefined) { out.inicio = dataOk(b.inicio); if (out.inicio === undefined) return erro('Data de início inválida.'); }
   return { dados: out };
 }
 
 app.post('/api/tarefas', auth, express.json({ limit: '50kb' }), async (req, res) => {
   const v = await validaTarefa(req.body || {}, false); if (v.erro) return res.status(400).json(v);
-  const d = { descricao: null, responsavel: null, projeto_id: null, prioridade: 2, status: 'afazer', prazo: null, ...v.dados };
-  const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, prazo, concluida_em)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.prazo, d.status === 'concluida' ? new Date() : null]);
+  const d = { descricao: null, responsavel: null, projeto_id: null, prioridade: 2, status: 'afazer', inicio: null, prazo: null, ...v.dados };
+  if (d.inicio && d.prazo && d.prazo < d.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
+  const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, concluida_em)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.inicio, d.prazo, d.status === 'concluida' ? new Date() : null]);
   const t = r.rows[0];
   await registraEvento(t.id, req.email, `criou a tarefa (prazo: ${brData(d.prazo)})`);
   res.json(tarefaOut(t, 0));
@@ -287,10 +321,11 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
     const soStatus = Object.keys(d).every(k => k === 'status');
     if (!(t.responsavel === req.email && soStatus)) return res.status(403).json({ erro: 'Você só pode mudar a situação das tarefas sob sua responsabilidade. Prazo e responsável ficam com quem criou a tarefa ou com o gestor.' });
   }
-  const n = { titulo: t.titulo, descricao: t.descricao, responsavel: t.responsavel, projeto_id: t.projeto_id, prioridade: t.prioridade, status: t.status, prazo: fmtData(t.prazo), ...d };
+  const n = { titulo: t.titulo, descricao: t.descricao, responsavel: t.responsavel, projeto_id: t.projeto_id, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo), ...d };
+  if (n.inicio && n.prazo && n.prazo < n.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
   const concluida_em = n.status === 'concluida' ? (t.status === 'concluida' ? t.concluida_em : new Date()) : null;
-  await pool.query(`UPDATE tarefas SET titulo=$2, descricao=$3, responsavel=$4, projeto_id=$5, prioridade=$6, status=$7, prazo=$8, concluida_em=$9, atualizado_em=now() WHERE id=$1`,
-    [id, n.titulo, n.descricao, n.responsavel, n.projeto_id, n.prioridade, n.status, n.prazo, concluida_em]);
+  await pool.query(`UPDATE tarefas SET titulo=$2, descricao=$3, responsavel=$4, projeto_id=$5, prioridade=$6, status=$7, inicio=$8, prazo=$9, concluida_em=$10, atualizado_em=now() WHERE id=$1`,
+    [id, n.titulo, n.descricao, n.responsavel, n.projeto_id, n.prioridade, n.status, n.inicio, n.prazo, concluida_em]);
   // histórico do que importa para o controle
   if (n.status !== t.status) await registraEvento(id, req.email, `mudou a situação de "${STATUS_NOME[t.status]}" para "${STATUS_NOME[n.status]}"`);
   if (n.prazo !== fmtData(t.prazo)) await registraEvento(id, req.email, `mudou o prazo de ${brData(fmtData(t.prazo))} para ${brData(n.prazo)}`);

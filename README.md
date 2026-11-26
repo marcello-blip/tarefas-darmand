@@ -6,8 +6,10 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 
 - **Início:** atrasadas, vencem hoje, próximos 7 dias, concluídas no mês (com % no prazo), minhas tarefas e as que passei para outros. O gestor também vê as atrasadas da equipe.
 - **Tarefas:** lista com busca e filtros (pessoa, projeto, situação, prazo) ou quadro (A fazer → Em andamento → Aguardando → Concluída), arrastando os cartões.
+- **Cronograma (Gantt):** cada tarefa é uma barra do início ao prazo, agrupada por projeto ou por pessoa, em escala de dias ou meses. Arraste a barra para mudar as datas, puxe as pontas para mudar início ou prazo, escolha o responsável na própria linha. Tarefa sem data: clique no dia da linha dela.
 - **Prazos:** calendário do mês e lista agrupada (atrasadas, hoje, amanhã, próximos 7 dias, depois, sem prazo).
-- **Equipe:** por pessoa, quantas abertas, atrasadas, vencendo em 7 dias, concluídas e % no prazo nos últimos 30 dias. Projetos para agrupar tarefas.
+- **Projetos:** cadastro com objetivo, responsável, início, fim previsto, situação (planejamento, em andamento, pausado, concluído, cancelado) e cor. Cada projeto mostra % concluído, tarefas atrasadas, dias restantes e um indicador (No prazo, Em risco, Fora do prazo). A página do projeto tem o resumo, o cronograma por pessoa e as tarefas.
+- **Equipe:** por pessoa, quantas abertas, atrasadas, vencendo em 7 dias, concluídas e % no prazo nos últimos 30 dias.
 - **Histórico:** cada tarefa guarda comentários e registra sozinha quem mudou situação, prazo, responsável ou prioridade (ninguém "mexe no prazo" sem deixar rastro).
 
 ## Quem pode o quê
@@ -20,7 +22,8 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 | Mudar a situação (andamento) | sim | sim | sim | não |
 | Comentar | sim | sim | sim | sim |
 | Apagar tarefa | sim | sim | não | não |
-| Equipe e projetos | sim | não | não | não |
+| Equipe e criar projetos | sim | não | não | não |
+| Editar um projeto | sim | o responsável pelo projeto também | | |
 
 Gestores fixos ficam em `ADMIN_EMAILS`; outros podem ser promovidos na tela Equipe. Qualquer conta Google Workspace @darmand.com.br que entrar vira membro; o gestor pode desativar o acesso.
 

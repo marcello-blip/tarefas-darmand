@@ -156,6 +156,65 @@ button.kpi:hover{border-color:var(--muted)}
 .inativo{opacity:.5}
 .tag{font-size:11px;padding:1px 6px;border-radius:5px;background:var(--brand-soft);color:var(--brand);font-weight:600;margin-left:6px}
 
+/* cronograma (Gantt) */
+.gantt{overflow:auto;max-height:calc(100vh - 230px);min-height:240px;position:relative}
+.phead ~ .secao .gantt{max-height:none}
+.g-linha{display:flex;min-width:max-content;border-bottom:1px solid var(--line)}
+.g-rot{position:sticky;left:0;z-index:3;width:300px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:6px 10px;display:flex;align-items:center;gap:8px;min-height:38px}
+.g-rot .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.g-rot .nm:hover{color:var(--brand)}
+.g-rot select{max-width:110px;padding:3px 4px;border:1px solid var(--line);border-radius:7px;background:var(--surface);font-size:12px}
+.g-pista{position:relative;flex:none}
+.g-cab{position:sticky;top:0;z-index:4;background:var(--surface2)}
+.g-cab .g-rot{background:var(--surface2);font-size:12px;color:var(--muted);font-weight:600;z-index:5}
+.g-meses,.g-dias{position:relative;height:22px}
+.g-meses span,.g-dias span{position:absolute;top:0;height:22px;line-height:22px;font-size:11px;color:var(--muted);border-left:1px solid var(--line);padding-left:4px;white-space:nowrap;overflow:hidden}
+.g-meses span{font-weight:600;color:var(--ink)}
+.g-dias span.hj{background:var(--brand);color:#fff;font-weight:600}
+.g-grupo .g-rot{background:var(--surface2);font-weight:600}
+.g-grupo .g-pista{background:var(--surface2)}
+.g-grupo .g-rot .ct{color:var(--muted);font-weight:500;font-size:12px}
+.g-fds{position:absolute;top:0;bottom:0;background:var(--gray-soft);opacity:.55;pointer-events:none}
+.g-hoje{position:absolute;top:0;bottom:0;width:2px;background:var(--brand);z-index:2;pointer-events:none}
+.g-barra{position:absolute;top:8px;height:22px;border-radius:6px;background:var(--brand);color:#fff;font-size:11.5px;font-weight:500;line-height:22px;padding:0 8px;white-space:nowrap;overflow:visible;z-index:1;touch-action:none;user-select:none}
+.g-barra.mexe{cursor:grab}.g-barra.mexe:active{cursor:grabbing}
+.g-barra .lb{position:absolute;left:100%;margin-left:6px;color:var(--ink);font-weight:500}
+.g-barra.cabe .lb{position:static;margin:0;color:inherit}
+.g-barra.cabe{overflow:hidden;text-overflow:ellipsis}
+.g-barra.st-andamento{background:var(--blue)}
+.g-barra.st-aguardando{background:var(--amber)}
+.g-barra.st-concluida{background:var(--green);opacity:.75}
+.g-barra.st-atrasada{background:var(--red)}
+.g-barra .al{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize}
+.g-barra .al.e{left:-2px}.g-barra .al.d{right:-2px}
+.g-barra.proj{top:12px;height:14px;border-radius:4px;opacity:.35}
+.g-vazia{position:absolute;inset:0;cursor:copy}
+.g-vazia:hover{background:repeating-linear-gradient(90deg,transparent 0 6px,var(--brand-soft) 6px 12px)}
+.legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.legenda i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+/* projetos */
+.projs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{padding:16px;cursor:pointer;border-top:4px solid var(--brand);display:flex;flex-direction:column;gap:10px}
+.pcard:hover{border-color:var(--muted)}
+.pcard h4{margin:0;font-size:15px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.pcard .desc{color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:0}
+.pcard .lin{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.progresso{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600}
+.progresso .barra{flex:1;height:8px;border-radius:4px}
+.saude{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.saude.ok{background:var(--green-soft);color:var(--green)}
+.saude.risco{background:var(--amber-soft);color:var(--amber)}
+.saude.atrasado{background:var(--red-soft);color:var(--red)}
+.saude.neutro{background:var(--gray-soft);color:var(--muted)}
+.voltar{border:0;background:none;color:var(--muted);padding:0;margin-bottom:10px;font-weight:500}
+.voltar:hover{color:var(--brand)}
+.phead{padding:18px 20px;border-top:5px solid var(--brand);margin-bottom:16px}
+.phead h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pinfo{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+.pinfo div small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
+.pinfo div b{font-weight:600}
+
 /* janela */
 .fundo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
 .janela{background:var(--surface);border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -195,6 +254,7 @@ button.kpi:hover{border-color:var(--muted)}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .prazos-grid{grid-template-columns:1fr}
   .esconde-m{display:none}
+  .pinfo{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:640px){
   .topo{flex-wrap:wrap;gap:8px 12px}
@@ -209,6 +269,10 @@ button.kpi:hover{border-color:var(--muted)}
   .cal .mais{display:none}
   .alterna{margin-left:0}
   .tabela .esconde-p{display:none}
+  .g-rot{width:150px}
+  .g-rot select{display:none}
+  .gantt{max-height:none}
+  .projs{grid-template-columns:1fr}
   .fundo{padding:0}
   .janela{border-radius:0;min-height:100vh}
 }
@@ -221,7 +285,9 @@ button.kpi:hover{border-color:var(--muted)}
     <nav id="nav">
       <button data-v="inicio" class="ativo">Início</button>
       <button data-v="tarefas">Tarefas</button>
+      <button data-v="cronograma">Cronograma</button>
       <button data-v="prazos">Prazos</button>
+      <button data-v="projetos">Projetos</button>
       <button data-v="equipe">Equipe</button>
     </nav>
     <div class="eu">
@@ -238,7 +304,11 @@ button.kpi:hover{border-color:var(--muted)}
 <script>
 // ---------------- estado ----------------
 const S = { me: null, pessoas: [], projetos: [], tarefas: [], vista: 'inicio', modo: localGet('modo') || 'lista',
-  f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null };
+  f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null,
+  g: { agrupar: localGet('agrupar') || 'projeto', escala: localGet('escala') || 'semanas', resp: '', proj: '', concluidas: false }, gScroll: null,
+  pf: 'abertos', projetoSel: null };
+const PROJ_STATUS = [['planejamento', 'Planejamento'], ['andamento', 'Em andamento'], ['pausado', 'Pausado'], ['concluido', 'Concluído'], ['cancelado', 'Cancelado']];
+const PROJ_STATUS_NOME = Object.fromEntries(PROJ_STATUS);
 const STATUS = [['afazer', 'A fazer'], ['andamento', 'Em andamento'], ['aguardando', 'Aguardando'], ['concluida', 'Concluída']];
 const STATUS_NOME = Object.fromEntries(STATUS);
 const PRI = { 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Urgente' };
@@ -336,7 +406,150 @@ const listaHtml = (ts, vazio) => ts.length ? `<div class="card lista">${ts.map(l
 function desenha() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('ativo', b.dataset.v === S.vista));
   $('#btnEu').innerHTML = avatar(S.me.email);
-  $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, prazos: vPrazos, equipe: vEquipe }[S.vista]();
+  const g = $('.gantt'); if (g) S.gScroll = g.scrollLeft;
+  $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, cronograma: vCronograma, prazos: vPrazos, projetos: () => S.projetoSel ? vProjeto() : vProjetos(), equipe: vEquipe }[S.vista]();
+  const g2 = $('.gantt');
+  if (g2) { if (S.gScroll == null) rolaHoje(); else g2.scrollLeft = S.gScroll; }
+}
+function rolaHoje() { const g = $('.gantt'), h = g && g.querySelector('.g-hoje'); if (h) { g.scrollLeft = Math.max(0, parseFloat(h.style.left) - 150); S.gScroll = g.scrollLeft; } }
+
+// ---------------- cronograma (Gantt) ----------------
+const datasT = t => { const i = t.inicio || t.prazo, f = t.prazo || t.inicio; return i ? [i, f] : null; };
+const PXDIA = { semanas: 34, meses: 12 };
+// monta o Gantt de uma lista de tarefas, em grupos (projeto ou pessoa)
+function gantt(ts, agrupar, opts = {}) {
+  const px = PXDIA[S.g.escala], h = hoje();
+  // intervalo: cobre todas as barras, com folga, e pelo menos de 2 semanas antes a 6 semanas depois de hoje
+  let ini = somaDias(h, -14), fim = somaDias(h, 42);
+  for (const t of ts) { const d = datasT(t); if (d) { if (d[0] < ini) ini = d[0]; if (d[1] > fim) fim = d[1]; } }
+  const projsVis = agrupar === 'projeto' ? S.projetos.filter(p => ts.some(t => t.projetoId === p.id) || opts.projetos?.includes(p.id)) : [];
+  for (const p of projsVis) { if (p.inicio && p.inicio < ini) ini = p.inicio; if (p.fim && p.fim > fim) fim = p.fim; }
+  ini = somaDias(ini, -3); fim = somaDias(fim, 10);
+  // começa num domingo para as semanas ficarem alinhadas
+  const d0 = new Date(ini + 'T12:00'); ini = somaDias(ini, -d0.getDay());
+  const nd = difDias(ini, fim) + 1, W = nd * px, x = s => difDias(ini, s) * px;
+  // cabeçalho: meses e dias
+  let meses = '', dias = '', fds = '';
+  for (let i = 0; i < nd; i++) {
+    const s = somaDias(ini, i), dt = new Date(s + 'T12:00'), dd = dt.getDate(), ds = dt.getDay();
+    if (dd === 1 || i === 0) { const resto = Math.min(nd - i, new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate() - dd + 1); meses += `<span style="left:${i * px}px;width:${resto * px}px">${MESES[dt.getMonth()]} ${dt.getFullYear()}</span>`; }
+    if (px >= 24) dias += `<span class="${s === h ? 'hj' : ''}" style="left:${i * px}px;width:${px}px;text-align:center;padding:0" title="${brData(s)}">${dd}</span>`;
+    else if (ds === 1) dias += `<span style="left:${i * px}px;width:${7 * px}px">${dd}</span>`;
+    if (ds === 0 || ds === 6) fds += `<div class="g-fds" style="left:${i * px}px;width:${px}px"></div>`;
+  }
+  const hojeX = h >= ini && h <= fim ? `<div class="g-hoje" style="left:${x(h) + px / 2 - 1}px"></div>` : '';
+  const pista = (conteudo, extra = '') => `<div class="g-pista" style="width:${W}px" ${extra}>${fds}${hojeX}${conteudo}</div>`;
+  const ativos = S.pessoas.filter(p => p.ativo);
+  const linhaT = t => {
+    const d = datasT(t), s = situacao(t), cls = 'st-' + (s === 'ok' ? 'concluida' : s === 'atrasada' ? 'atrasada' : t.status), mexe = podeTudo(t);
+    let barra = '';
+    if (d) {
+      const w = (difDias(d[0], d[1]) + 1) * px, cabe = w >= Math.min(220, t.titulo.length * 6.5 + 16);
+      barra = `<div class="g-barra ${cls} ${mexe ? 'mexe' : ''} ${cabe ? 'cabe' : ''}" data-barra="${t.id}" style="left:${x(d[0])}px;width:${w}px" title="${esc(t.titulo)} · ${brData(d[0])} a ${brData(d[1])}">
+        ${mexe ? '<span class="al e" data-al="e"></span><span class="al d" data-al="d"></span>' : ''}<span class="lb">${esc(t.titulo)}</span></div>`;
+    } else if (mexe) barra = `<div class="g-vazia" data-sem-data="${t.id}" title="Clique no dia para marcar a data desta tarefa"></div>`;
+    const sel = mexe ? `<select data-designa="${t.id}" title="Responsável"><option value="">—</option>${ativos.map(p => `<option value="${esc(p.email)}" ${p.email === t.responsavel ? 'selected' : ''}>${esc(p.nome.split(' ')[0])}</option>`).join('')}</select>` : avatar(t.responsavel, 'p');
+    return `<div class="g-linha"><div class="g-rot"><span class="nm" data-id="${t.id}" title="${esc(t.titulo)}">${esc(t.titulo)}</span>${sel}</div>${pista(barra, `data-pista="${t.id}" data-ini="${ini}" data-px="${px}"`)}</div>`;
+  };
+  // grupos
+  let grupos;
+  if (agrupar === 'pessoa') {
+    const emails = [...new Set(ts.map(t => t.responsavel || ''))].sort((a, b) => nome(a || null).localeCompare(nome(b || null)));
+    grupos = emails.map(e => ({ rot: `${avatar(e || null, 'p')}<span class="nm">${esc(nome(e || null))}</span>`, ts: ts.filter(t => (t.responsavel || '') === e), barra: '' }));
+  } else if (agrupar === 'projeto') {
+    grupos = projsVis.map(p => {
+      const pts = ts.filter(t => t.projetoId === p.id);
+      const pb = p.inicio || p.fim ? `<div class="g-barra proj" style="left:${x(p.inicio || p.fim)}px;width:${(difDias(p.inicio || p.fim, p.fim || p.inicio) + 1) * px}px;background:${esc(p.cor)}" title="Projeto: ${brData(p.inicio)} a ${brData(p.fim)}"></div>` : '';
+      return { rot: `<i style="width:10px;height:10px;border-radius:3px;background:${esc(p.cor)};flex:none"></i><span class="nm" data-abre-proj="${p.id}">${esc(p.nome)}</span><span class="ct">${pts.length}</span><button class="btn peq" data-nova-no-proj="${p.id}" title="Nova tarefa neste projeto">+</button>`, ts: pts, barra: pb };
+    });
+    const sem = ts.filter(t => !t.projetoId); if (sem.length) grupos.push({ rot: '<span class="nm">Sem projeto</span>', ts: sem, barra: '' });
+  } else grupos = [{ rot: null, ts, barra: '' }];
+  const ordemG = (a, b) => ((datasT(a) || ['9999'])[0]).localeCompare((datasT(b) || ['9999'])[0]) || a.id - b.id;
+  const corpo = grupos.map(g => (g.rot ? `<div class="g-linha g-grupo"><div class="g-rot">${g.rot}</div>${pista(g.barra)}</div>` : '') + g.ts.slice().sort(ordemG).map(linhaT).join('')).join('');
+  return `<div class="card gantt">
+    <div class="g-linha g-cab"><div class="g-rot">Tarefa / responsável</div><div class="g-pista" style="width:${W}px"><div class="g-meses">${meses}</div><div class="g-dias">${dias}</div></div></div>
+    ${corpo || `<div class="vazio">Nenhuma tarefa para mostrar.</div>`}
+  </div>
+  <div class="legenda"><span><i style="background:var(--brand)"></i>A fazer</span><span><i style="background:var(--blue)"></i>Em andamento</span><span><i style="background:var(--amber)"></i>Aguardando</span><span><i style="background:var(--red)"></i>Atrasada</span><span><i style="background:var(--green)"></i>Concluída</span>
+  <span>Arraste a barra para mudar as datas, puxe as pontas para mudar início ou prazo. Tarefa sem data: clique no dia da linha dela.</span></div>`;
+}
+function vCronograma() {
+  const g = S.g, ativos = S.pessoas.filter(p => p.ativo);
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const ts = S.tarefas.filter(t => (g.concluidas || t.status !== 'concluida') && (!g.resp || (g.resp === '_eu' ? t.responsavel === S.me.email : t.responsavel === g.resp)) && (!g.proj || t.projetoId === +g.proj));
+  return `<h2>Cronograma</h2><p class="sub">Linha do tempo das tarefas: início, prazo e quem está com cada uma.</p>
+    <div class="filtros">
+      <select id="gAgr">${opt('projeto', 'Agrupar por projeto', g.agrupar)}${opt('pessoa', 'Agrupar por pessoa', g.agrupar)}${opt('nada', 'Sem agrupar', g.agrupar)}</select>
+      <select id="gResp">${opt('', 'Todas as pessoas', g.resp)}${opt('_eu', 'Comigo', g.resp)}${ativos.map(p => opt(p.email, p.nome, g.resp)).join('')}</select>
+      <select id="gProj">${opt('', 'Todos os projetos', g.proj)}${S.projetos.filter(p => p.ativo).map(p => opt(p.id, p.nome, g.proj)).join('')}</select>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--muted)"><input type="checkbox" id="gConc" ${g.concluidas ? 'checked' : ''}> Mostrar concluídas</label>
+      <button class="btn peq" data-g-hoje>Hoje</button>
+      <div class="alterna"><button data-escala="semanas" class="${g.escala === 'semanas' ? 'ativo' : ''}">Dias</button><button data-escala="meses" class="${g.escala === 'meses' ? 'ativo' : ''}">Meses</button></div>
+    </div>${gantt(ts, g.agrupar)}`;
+}
+
+// ---------------- projetos ----------------
+const podeEditarProj = p => S.me.gestor || p.responsavel === S.me.email;
+function resumoProj(p) {
+  const ts = S.tarefas.filter(t => t.projetoId === p.id), feitas = ts.filter(t => t.status === 'concluida').length;
+  const ab = ts.filter(t => t.status !== 'concluida'), atr = ab.filter(t => situacao(t) === 'atrasada').length;
+  const pct = ts.length ? Math.round(feitas / ts.length * 100) : 0, h = hoje();
+  const restam = p.fim ? difDias(h, p.fim) : null;
+  let saude;
+  if (p.status === 'concluido') saude = ['ok', 'Concluído'];
+  else if (p.status === 'cancelado') saude = ['neutro', 'Cancelado'];
+  else if (p.status === 'pausado') saude = ['neutro', 'Pausado'];
+  else if (restam != null && restam < 0) saude = ['atrasado', 'Fora do prazo'];
+  else if (atr || (restam != null && restam <= 7 && pct < 70 && ts.length)) saude = ['risco', 'Em risco'];
+  else if (p.status === 'planejamento') saude = ['neutro', 'Planejamento'];
+  else saude = ['ok', 'No prazo'];
+  return { ts, feitas, ab: ab.length, atr, pct, restam, saude };
+}
+const periodo = p => p.inicio || p.fim ? `${p.inicio ? curta(p.inicio) : '?'} → ${p.fim ? curta(p.fim) + (p.fim.slice(0, 4) !== hoje().slice(0, 4) ? ' ' + p.fim.slice(0, 4) : '') : '?'}` : 'Sem datas';
+function vProjetos() {
+  const lista = S.projetos.filter(p => S.pf === 'todos' || (S.pf === 'abertos' ? p.ativo : p.status === S.pf));
+  const cards = lista.map(p => {
+    const r = resumoProj(p);
+    return `<div class="card pcard" data-abre-proj="${p.id}" style="border-top-color:${esc(p.cor)}">
+      <h4><span>${esc(p.nome)}</span><span class="saude ${r.saude[0]}">${r.saude[1]}</span></h4>
+      ${p.descricao ? `<div class="desc">${esc(p.descricao)}</div>` : ''}
+      <div class="progresso"><div class="barra"><i style="width:${r.pct}%;background:${esc(p.cor)}"></i></div>${r.pct}%</div>
+      <div class="lin">${r.feitas} de ${r.ts.length} tarefas concluídas${r.atr ? ` · <b style="color:var(--red)">${r.atr} atrasada${r.atr > 1 ? 's' : ''}</b>` : ''}</div>
+      <div class="lin">${avatar(p.responsavel, 'p')} ${esc(p.responsavel ? nome(p.responsavel) : 'Sem responsável')} <span style="margin-left:auto">📅 ${periodo(p)}${r.restam != null && p.ativo ? ` · ${r.restam >= 0 ? (r.restam === 0 ? 'termina hoje' : `faltam ${r.restam} d`) : `${-r.restam} d de atraso`}` : ''}</span></div>
+    </div>`;
+  }).join('');
+  const opt = (v, t) => `<option value="${v}" ${S.pf === v ? 'selected' : ''}>${t}</option>`;
+  return `<h2>Projetos</h2><p class="sub">Andamento de cada projeto: quanto já foi feito, o que está atrasado e quanto tempo falta.</p>
+    <div class="filtros"><select id="pFiltro">${opt('abertos', 'Abertos')}${opt('todos', 'Todos')}${PROJ_STATUS.map(([k, n]) => opt(k, n)).join('')}</select>
+    ${S.me.gestor ? '<button class="btn prim" id="btnAddProj" style="margin-left:auto">+ Novo projeto</button>' : ''}</div>
+    ${cards ? `<div class="projs">${cards}</div>` : `<div class="card vazio">Nenhum projeto aqui. ${S.me.gestor ? 'Cadastre um em "+ Novo projeto" (ex.: Inauguração Loja Norte, Campanha de Natal).' : ''}</div>`}`;
+}
+function vProjeto() {
+  const p = projeto(S.projetoSel); if (!p) { S.projetoSel = null; return vProjetos(); }
+  const r = resumoProj(p), ab = r.ts.filter(t => t.status !== 'concluida').sort(ordem), feitas = r.ts.filter(t => t.status === 'concluida').sort((a, b) => b.concluidaEm - a.concluidaEm);
+  const salvaEsc = S.g.escala;
+  const html = `<button class="voltar" data-voltar-proj>‹ Todos os projetos</button>
+    <div class="card phead" style="border-top-color:${esc(p.cor)}">
+      <h2>${esc(p.nome)} <span class="saude ${r.saude[0]}">${r.saude[1]}</span>
+        <span style="margin-left:auto;display:flex;gap:8px">${podeEditarProj(p) ? `<button class="btn peq" data-edita-proj="${p.id}">Editar projeto</button>` : ''}<button class="btn peq prim" data-nova-no-proj="${p.id}">+ Tarefa</button></span></h2>
+      ${p.descricao ? `<p class="sub" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.descricao)}</p>` : ''}
+      <div class="progresso" style="margin-top:14px"><div class="barra"><i style="width:${r.pct}%;background:${esc(p.cor)}"></i></div>${r.pct}% concluído</div>
+      <div class="pinfo">
+        <div><small>Responsável</small><b style="display:flex;align-items:center;gap:6px">${avatar(p.responsavel, 'p')}${esc(p.responsavel ? nome(p.responsavel) : 'Sem responsável')}</b></div>
+        <div><small>Situação</small><b>${PROJ_STATUS_NOME[p.status]}</b></div>
+        <div><small>Período</small><b>${p.inicio ? brData(p.inicio) : '?'} a ${p.fim ? brData(p.fim) : '?'}</b></div>
+        <div><small>Prazo</small><b>${r.restam == null ? 'Sem data de fim' : !p.ativo ? '—' : r.restam >= 0 ? (r.restam === 0 ? 'Termina hoje' : `Faltam ${r.restam} dias`) : `<span style="color:var(--red)">${-r.restam} dias de atraso</span>`}</b></div>
+        <div><small>Tarefas</small><b>${r.feitas} de ${r.ts.length} concluídas</b></div>
+        <div><small>Abertas</small><b>${r.ab}</b></div>
+        <div><small>Atrasadas</small><b style="color:${r.atr ? 'var(--red)' : 'inherit'}">${r.atr}</b></div>
+        <div><small>Pessoas envolvidas</small><b style="display:flex;gap:2px">${[...new Set(r.ts.map(t => t.responsavel).filter(Boolean))].map(e => avatar(e, 'p')).join('') || '—'}</b></div>
+      </div>
+    </div>
+    <div class="secao"><h3>Cronograma do projeto <div class="alterna" style="margin-left:auto"><button data-escala="semanas" class="${salvaEsc === 'semanas' ? 'ativo' : ''}">Dias</button><button data-escala="meses" class="${salvaEsc === 'meses' ? 'ativo' : ''}">Meses</button></div></h3>
+      ${gantt(r.ts, 'pessoa')}</div>
+    <div class="secao"><h3>Tarefas abertas <span class="n">${ab.length}</span></h3>${listaHtml(ab, 'Nenhuma tarefa aberta neste projeto.')}</div>
+    ${feitas.length ? `<div class="secao"><h3>Concluídas <span class="n">${feitas.length}</span></h3>${listaHtml(feitas, '')}</div>` : ''}`;
+  return html;
 }
 
 function vInicio() {
@@ -455,22 +668,11 @@ function vEquipe() {
       ${S.me.gestor || p.email === S.me.email ? `<td><button class="btn peq" data-edita-pessoa="${esc(p.email)}">Editar</button></td>` : '<td></td>'}
     </tr>`;
   }).join('');
-  const projs = S.projetos.filter(p => S.me.gestor || p.ativo);
   return `<h2>Equipe</h2><p class="sub">Carga de trabalho e cumprimento de prazos de cada pessoa. Clique numa pessoa para ver as tarefas dela.</p>
     ${S.me.gestor ? '<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn" id="btnAddPessoa">+ Adicionar pessoa</button></div>' : ''}
     <div class="card" style="overflow-x:auto"><table class="tabela">
       <thead><tr><th>Pessoa</th><th>Abertas</th><th>Atrasadas</th><th class="esconde-p">Vencem em 7 dias</th><th class="esconde-p">Concluídas (30 dias)</th><th class="esconde-p">No prazo (30 dias)</th><th></th></tr></thead>
-      <tbody>${linhas || '<tr><td colspan="7" class="vazio">Ninguém na equipe ainda.</td></tr>'}</tbody></table></div>
-    <div class="secao"><h3>Projetos <span class="n">${projs.length}</span>${S.me.gestor ? '<button class="btn peq" id="btnAddProj" style="margin-left:auto">+ Novo projeto</button>' : ''}</h3>
-      ${projs.length ? `<div class="card lista">${projs.map(p => {
-        const ab = S.tarefas.filter(t => t.projetoId === p.id && t.status !== 'concluida'), atr = ab.filter(t => situacao(t) === 'atrasada').length;
-        return `<div class="linha ${p.ativo ? '' : 'inativo'}" data-proj="${p.id}" style="grid-template-columns:16px 1fr auto auto">
-          <i style="width:12px;height:12px;border-radius:3px;background:${esc(p.cor)}"></i>
-          <div class="tit"><span>${esc(p.nome)}${p.ativo ? '' : ' (arquivado)'}</span></div>
-          <span class="st">${ab.length} abertas${atr ? ` · <b style="color:var(--red)">${atr} atrasadas</b>` : ''}</span>
-          ${S.me.gestor ? `<button class="btn peq" data-edita-proj="${p.id}">Editar</button>` : '<span></span>'}
-        </div>`; }).join('')}</div>` : `<div class="card vazio">Nenhum projeto. ${S.me.gestor ? 'Projetos ajudam a agrupar tarefas (ex.: Inauguração Loja X, Campanha de Natal).' : ''}</div>`}
-    </div>`;
+      <tbody>${linhas || '<tr><td colspan="7" class="vazio">Ninguém na equipe ainda.</td></tr>'}</tbody></table></div>`;
 }
 
 // ---------------- janelas ----------------
@@ -497,11 +699,12 @@ function janelaTarefa(t, padrao) {
     <label class="campo"><span>Detalhes</span><textarea id="tDesc" maxlength="5000" ${dis} placeholder="Contexto, passos, links…">${esc(t.descricao)}</textarea></label>
     <div class="duas">
       <label class="campo"><span>Responsável</span><select id="tResp" ${dis}>${opt('', 'Sem responsável', t.responsavel)}${ativos.map(p => opt(p.email, p.nome + (p.email === S.me.email ? ' (eu)' : ''), t.responsavel)).join('')}</select></label>
+      <label class="campo"><span>Projeto</span><select id="tProj" ${dis}>${opt('', 'Sem projeto', t.projetoId)}${S.projetos.filter(p => p.ativo || p.id === t.projetoId).map(p => opt(p.id, p.nome, t.projetoId)).join('')}</select></label>
+      <label class="campo"><span>Início</span><input type="date" id="tIni" value="${esc(t.inicio || '')}" ${dis}></label>
       <label class="campo"><span>Prazo</span><input type="date" id="tPrazo" value="${esc(t.prazo || '')}" ${dis}></label>
       <label class="campo"><span>Situação</span><select id="tSt" ${st ? '' : 'disabled'}>${STATUS.map(([k, n]) => opt(k, n, t.status)).join('')}</select></label>
       <label class="campo"><span>Prioridade</span><select id="tPri" ${dis}>${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select></label>
     </div>
-    <label class="campo"><span>Projeto</span><select id="tProj" ${dis}>${opt('', 'Sem projeto', t.projetoId)}${S.projetos.filter(p => p.ativo || p.id === t.projetoId).map(p => opt(p.id, p.nome, t.projetoId)).join('')}</select></label>
     ${nova ? '' : `<div class="hist"><h4>Comentários e histórico</h4><div id="tHist"><div class="st">Carregando…</div></div>
       <div class="novo-coment"><textarea id="tCom" maxlength="2000" placeholder="Escreva um comentário…"></textarea><button class="btn" id="tComBtn">Enviar</button></div>
       <p class="st" style="margin:10px 0 0">Criada por ${esc(nome(t.criadoPor))} em ${brData(ymd(new Date(t.criadoEm)))}</p></div>`}`;
@@ -510,9 +713,10 @@ function janelaTarefa(t, padrao) {
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   const salva = j.querySelector('#tSalva');
   if (salva) salva.onclick = async () => {
-    const dados = tudo ? { titulo: $('#tTit').value, descricao: $('#tDesc').value, responsavel: $('#tResp').value || null, prazo: $('#tPrazo').value || null,
+    const dados = tudo ? { titulo: $('#tTit').value, descricao: $('#tDesc').value, responsavel: $('#tResp').value || null, inicio: $('#tIni').value || null, prazo: $('#tPrazo').value || null,
       status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null } : { status: $('#tSt').value };
     if (tudo && !dados.titulo.trim()) { toast('Dê um título à tarefa.', true); $('#tTit').focus(); return; }
+    if (tudo && dados.inicio && dados.prazo && dados.prazo < dados.inicio) { toast('O prazo não pode ser antes do início.', true); return; }
     salva.disabled = true;
     try { await api(nova ? 'POST' : 'PUT', nova ? '/api/tarefas' : '/api/tarefas/' + t.id, dados); fechaJanela(); toast(nova ? 'Tarefa criada.' : 'Tarefa salva.'); await recarrega(); }
     catch (e) { toast(e.message, true); salva.disabled = false; }
@@ -542,7 +746,7 @@ function janelaTarefa(t, padrao) {
     });
   }
 }
-async function recarregaSilencioso() { try { await carrega(); if (!$('#janela')) desenha(); } catch {} }
+async function recarregaSilencioso() { try { await carrega(); if (!$('#janela') && !arr && !(document.activeElement && document.activeElement.matches('select,input'))) desenha(); } catch {} }
 
 function janelaPessoa(p) {
   const nova = !p; p = p || { email: '', nome: '', cargo: '', area: '', papel: 'membro', ativo: true };
@@ -574,17 +778,61 @@ function janelaPessoa(p) {
 }
 
 function janelaProjeto(p) {
-  const nova = !p; p = p || { nome: '', cor: '#9d162e', ativo: true };
-  const corpo = `<label class="campo"><span>Nome do projeto</span><input id="jNome" maxlength="60" value="${esc(p.nome)}" placeholder="Ex.: Inauguração Loja Norte"></label>
-    <div class="duas"><label class="campo"><span>Cor</span><input id="jCor" type="color" value="${esc(p.cor)}" style="height:40px;padding:4px"></label>
-    ${nova ? '' : `<label class="campo"><span>Situação</span><select id="jAtivo"><option value="1" ${p.ativo ? 'selected' : ''}>Ativo</option><option value="0" ${p.ativo ? '' : 'selected'}>Arquivado</option></select></label>`}</div>`;
+  const nova = !p; p = p || { nome: '', cor: CORES[S.projetos.length % CORES.length], descricao: '', responsavel: S.me.email, inicio: hoje(), fim: '', status: 'andamento' };
+  const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel ?? '') === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
+  const ativos = S.pessoas.filter(x => x.ativo || x.email === p.responsavel);
+  const corpo = `<label class="campo"><span>Nome do projeto</span><input id="jNome" maxlength="80" value="${esc(p.nome)}" placeholder="Ex.: Inauguração Loja Norte"></label>
+    <label class="campo"><span>Objetivo / descrição</span><textarea id="jDesc" maxlength="3000" placeholder="O que é o projeto, o que precisa entregar, como saber que deu certo…">${esc(p.descricao)}</textarea></label>
+    <div class="duas">
+      <label class="campo"><span>Responsável pelo projeto</span><select id="jResp">${opt('', 'Sem responsável', p.responsavel)}${ativos.map(x => opt(x.email, x.nome, p.responsavel)).join('')}</select></label>
+      <label class="campo"><span>Situação</span><select id="jSt">${PROJ_STATUS.map(([k, n]) => opt(k, n, p.status)).join('')}</select></label>
+      <label class="campo"><span>Início</span><input id="jIni" type="date" value="${esc(p.inicio || '')}"></label>
+      <label class="campo"><span>Fim previsto</span><input id="jFim" type="date" value="${esc(p.fim || '')}"></label>
+      <label class="campo"><span>Cor</span><input id="jCor" type="color" value="${esc(p.cor)}" style="height:40px;padding:4px"></label>
+    </div>
+    <p class="st" style="margin:0">O responsável pelo projeto também pode editá-lo. Projetos concluídos ou cancelados saem da lista de abertos.</p>`;
   const j = abreJanela(nova ? 'Novo projeto' : 'Editar projeto', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="jSalva">Salvar</button>');
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   j.querySelector('#jSalva').onclick = async () => {
-    const d = { nome: $('#jNome').value, cor: $('#jCor').value }; if ($('#jAtivo')) d.ativo = $('#jAtivo').value === '1';
-    try { await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast('Salvo.'); await recarrega(); } catch (e) { toast(e.message, true); }
+    const d = { nome: $('#jNome').value, descricao: $('#jDesc').value, responsavel: $('#jResp').value || null, status: $('#jSt').value, inicio: $('#jIni').value || null, fim: $('#jFim').value || null, cor: $('#jCor').value };
+    if (!d.nome.trim()) { toast('Dê um nome ao projeto.', true); return; }
+    if (d.inicio && d.fim && d.fim < d.inicio) { toast('O fim previsto não pode ser antes do início.', true); return; }
+    try { const r = await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast(nova ? 'Projeto criado.' : 'Projeto salvo.'); if (nova) { S.vista = 'projetos'; S.projetoSel = r.id; } await recarrega(); } catch (e) { toast(e.message, true); }
   };
 }
+
+// ---------------- arrastar barras do Gantt ----------------
+let arr = null;
+function salvaDatas(t, inicio, prazo, ant) {
+  t.inicio = inicio; t.prazo = prazo; desenha();
+  api('PUT', '/api/tarefas/' + t.id, { inicio, prazo }).then(() => { toast(`${t.titulo}: ${brData(inicio)}${inicio !== prazo ? ' a ' + brData(prazo) : ''}`); recarregaSilencioso(); })
+    .catch(e => { t.inicio = ant[0]; t.prazo = ant[1]; desenha(); toast(e.message, true); });
+}
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-barra]'); if (!b || e.button !== 0) return;
+  const t = S.tarefas.find(x => x.id === +b.dataset.barra); if (!t) return;
+  const pista = b.closest('[data-pista]');
+  arr = { t, b, x0: e.clientX, px: +pista.dataset.px, modo: e.target.dataset.al || 'mover', d: datasT(t), l0: parseFloat(b.style.left), w0: parseFloat(b.style.width), mexe: podeTudo(t), moveu: false };
+  if (arr.mexe) { try { b.setPointerCapture(e.pointerId); } catch {} e.preventDefault(); }
+});
+document.addEventListener('pointermove', e => {
+  if (!arr || !arr.mexe) return;
+  const dd = Math.round((e.clientX - arr.x0) / arr.px); if (dd !== 0) arr.moveu = true; arr.dd = dd;
+  const { b, l0, w0, px, modo } = arr;
+  if (modo === 'mover') b.style.left = l0 + dd * px + 'px';
+  else if (modo === 'e') { const d = Math.min(dd, w0 / px - 1); b.style.left = l0 + d * px + 'px'; b.style.width = w0 - d * px + 'px'; }
+  else { const d = Math.max(dd, 1 - w0 / px); b.style.width = w0 + d * px + 'px'; }
+});
+document.addEventListener('pointerup', () => {
+  if (!arr) return; const a = arr; arr = null;
+  if (!a.moveu) { janelaTarefa(a.t); return; }
+  const n = a.w0 / a.px - 1; let [i, f] = a.d, dd = a.dd;
+  if (a.modo === 'mover') { i = somaDias(i, dd); f = somaDias(f, dd); }
+  else if (a.modo === 'e') i = somaDias(i, Math.min(dd, n));
+  else f = somaDias(f, Math.max(dd, -n));
+  salvaDatas(a.t, i, f, [a.t.inicio, a.t.prazo]);
+});
+document.addEventListener('pointercancel', () => { if (arr) { arr = null; desenha(); } });
 
 // ---------------- ações ----------------
 async function mudaStatus(id, status) {
@@ -594,7 +842,7 @@ async function mudaStatus(id, status) {
   catch (e) { t.status = ant; desenha(); toast(e.message, true); }
 }
 
-document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; desenha(); window.scrollTo(0, 0); };
+document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0); };
 $('#btnNova').onclick = () => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
 $('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu');
   p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div><button id="sair">Sair</button>`;
@@ -617,12 +865,38 @@ main.addEventListener('click', e => {
   const ej = e.target.closest('[data-edita-proj]'); if (ej) { e.stopPropagation(); janelaProjeto(projeto(+ej.dataset.editaProj)); return; }
   if (e.target.closest('#btnAddPessoa')) { janelaPessoa(null); return; }
   if (e.target.closest('#btnAddProj')) { janelaProjeto(null); return; }
+  if (e.target.closest('[data-designa]')) return;
+  const np = e.target.closest('[data-nova-no-proj]'); if (np) { e.stopPropagation(); janelaTarefa(null, { projetoId: +np.dataset.novaNoProj }); return; }
+  const ap = e.target.closest('[data-abre-proj]'); if (ap) { S.vista = 'projetos'; S.projetoSel = +ap.dataset.abreProj; S.gScroll = null; desenha(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('[data-voltar-proj]')) { S.projetoSel = null; desenha(); return; }
+  const esc_ = e.target.closest('[data-escala]'); if (esc_) { S.g.escala = esc_.dataset.escala; localSet('escala', S.g.escala); S.gScroll = null; desenha(); return; }
+  if (e.target.closest('[data-g-hoje]')) { rolaHoje(); return; }
+  const sd = e.target.closest('[data-sem-data]');
+  if (sd) {
+    const t = S.tarefas.find(x => x.id === +sd.dataset.semData), pista = sd.closest('[data-pista]');
+    const dia = somaDias(pista.dataset.ini, Math.floor((e.clientX - pista.getBoundingClientRect().left) / +pista.dataset.px));
+    salvaDatas(t, dia, dia, [t.inicio, t.prazo]); return;
+  }
+  if (e.target.closest('[data-barra]')) return;
   const pr = e.target.closest('[data-pessoa]'); if (pr) { S.vista = 'tarefas'; S.f = { q: '', resp: pr.dataset.pessoa, proj: '', sit: 'abertas', prazo: '' }; desenha(); return; }
-  const pj = e.target.closest('[data-proj]'); if (pj) { S.vista = 'tarefas'; S.f = { q: '', resp: '', proj: pj.dataset.proj, sit: 'abertas', prazo: '' }; desenha(); return; }
   const it = e.target.closest('[data-id]'); if (it) { const t = S.tarefas.find(x => x.id === +it.dataset.id); if (t) janelaTarefa(t); }
 });
+main.addEventListener('change', async e => {
+  const ds = e.target.closest('[data-designa]');
+  if (ds) {
+    const t = S.tarefas.find(x => x.id === +ds.dataset.designa), ant = t.responsavel, novo = ds.value || null;
+    t.responsavel = novo;
+    try { await api('PUT', '/api/tarefas/' + t.id, { responsavel: novo }); toast(`${t.titulo} → ${nome(novo)}`); recarregaSilencioso(); }
+    catch (er) { t.responsavel = ant; desenha(); toast(er.message, true); }
+    return;
+  }
+  const gm = { gAgr: 'agrupar', gResp: 'resp', gProj: 'proj' }[e.target.id];
+  if (gm) { S.g[gm] = e.target.value; if (gm === 'agrupar') localSet('agrupar', e.target.value); desenha(); return; }
+  if (e.target.id === 'gConc') { S.g.concluidas = e.target.checked; desenha(); return; }
+  if (e.target.id === 'pFiltro') { S.pf = e.target.value; desenha(); }
+});
 main.addEventListener('input', e => {
-  const map = { fQ: 'q', fResp: 'resp', fProj: 'proj', fSit: 'sit', fPrazo: 'prazo' }, k = map[e.target.id]; if (!k) return;
+  const map ={ fQ: 'q', fResp: 'resp', fProj: 'proj', fSit: 'sit', fPrazo: 'prazo' }, k = map[e.target.id]; if (!k) return;
   S.f[k] = e.target.value;
   if (k === 'q') { const pos = e.target.selectionStart; desenha(); const i = $('#fQ'); i.focus(); i.setSelectionRange(pos, pos); } else desenha();
 });
