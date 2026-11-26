@@ -4,8 +4,10 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 
 ## O que tem
 
-- **Início:** atrasadas, vencem hoje, próximos 7 dias, concluídas no mês (com % no prazo), minhas tarefas e as que passei para outros. O gestor também vê as atrasadas da equipe.
-- **Tarefas:** lista com busca e filtros (pessoa, projeto, situação, prazo) ou quadro (A fazer → Em andamento → Aguardando → Concluída), arrastando os cartões.
+- **Início (espaço pessoal):** "Bem-vindo(a)" com o nome da pessoa e um resumo do dia (o que vence hoje, atrasadas, lembretes, aprovações esperando). Ao lado, o **📌 Meu mural**: lembretes particulares (🔒 só a pessoa vê), com ou sem data, que podem se repetir, como um checklist. Embaixo, "Esperando sua aprovação", "Minhas tarefas" (em lista ou quadro), os indicadores, as que passei para outros e, para o gestor, as atrasadas da equipe.
+- **Tarefas:** lista com busca e filtros (pessoa, projeto, situação, prazo) ou quadro Kanban de 4 colunas: **A fazer → Fazendo → Aguardando aprovação → Concluído**, arrastando os cartões. Cada pessoa escolhe lista ou quadro, e a escolha fica salva na conta dela (vale em qualquer computador).
+- **Aprovação:** quem é responsável por uma tarefa pedida por outra pessoa leva até **Aguardando aprovação** (se arrastar para Concluído, ela para em Aguardando). Quem pediu, ou um gestor, clica em **✅ Aprovar** ou **↩ Devolver**. Tudo fica no histórico.
+- **Recorrência:** tarefas e lembretes podem repetir (todo dia, dias úteis, toda semana, a cada 15 dias, todo mês, todo ano). Ao concluir uma tarefa recorrente, a próxima é criada sozinha, com o mesmo responsável, projeto e duração; um lembrete recorrente marcado como feito volta na próxima data.
 - **Cronograma (Gantt):** cada tarefa é uma barra do início ao prazo, agrupada por projeto ou por pessoa, em escala de dias ou meses. Arraste a barra para mudar as datas, puxe as pontas para mudar início ou prazo, escolha o responsável na própria linha. Tarefa sem data: clique no dia da linha dela.
 - **Prazos:** calendário do mês e lista agrupada (atrasadas, hoje, amanhã, próximos 7 dias, depois, sem prazo).
 - **Projetos:** cadastro com objetivo, responsável, início, fim previsto, situação (planejamento, em andamento, pausado, concluído, cancelado) e cor. Cada projeto mostra % concluído, tarefas atrasadas, dias restantes e um indicador (No prazo, Em risco, Fora do prazo). A página do projeto tem o resumo, o cronograma por pessoa e as tarefas.
@@ -21,7 +23,9 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 | Ver tarefas | todas | todas | todas | todas |
 | Criar tarefa | sim | sim | sim | sim |
 | Mudar título, prazo, responsável, prioridade | sim | sim | não | não |
-| Mudar a situação (andamento) | sim | sim | sim | não |
+| Mudar a situação (A fazer, Fazendo, Aguardando aprovação) | sim | sim | sim | não |
+| Aprovar (marcar como Concluído) ou devolver | sim | sim | não (vai para Aguardando aprovação) | não |
+| Lembretes do mural | só os próprios | só os próprios | só os próprios | só os próprios |
 | Comentar | sim | sim | sim | sim |
 | Apagar tarefa | sim | sim | não | não |
 | Equipe e criar projetos | sim | não | não | não |

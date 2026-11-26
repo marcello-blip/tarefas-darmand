@@ -215,6 +215,36 @@ button.kpi:hover{border-color:var(--muted)}
 .pinfo div small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
 .pinfo div b{font-weight:600}
 
+/* início: boas-vindas e mural */
+.boas-vindas{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.resumo-dia{background:var(--brand-soft);border-radius:12px;padding:10px 14px;font-size:14px;max-width:560px}
+.inicio-grid{display:grid;grid-template-columns:minmax(300px,1fr) 2fr;gap:20px;align-items:start}
+.mural{padding:16px;position:sticky;top:76px;border-top:4px solid var(--amber)}
+.mural-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mural-cab h3{margin:0;font-size:15px}
+.lem-novo{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.lem-novo input,.lem-novo select{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);min-width:0}
+.lem-op{display:flex;gap:6px}
+.lem-op input{flex:1}.lem-op select{flex:1}
+.lem-grupo{margin-top:8px}
+.lem-gt{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:6px 0 2px}
+.lem-gt.atrasada{color:var(--red)}.lem-gt.hoje{color:var(--amber)}
+.lem{display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px dashed var(--line)}
+.lem .chk{flex:none}
+.lem-txt{flex:1;min-width:0;cursor:text;word-break:break-word}
+.lem.feito .lem-txt{text-decoration:line-through;color:var(--muted)}
+.lem-x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:0 4px;opacity:.5}
+.lem:hover .lem-x{opacity:1}
+.lem-ver{border:0;background:none;color:var(--muted);font-size:13px;padding:10px 0 4px}
+.cartao .aprova{display:flex;gap:6px;margin-top:8px}
+.col-dica{font-size:12px;color:var(--muted);padding:10px 6px;border:1px dashed var(--line);border-radius:8px;text-align:center}
+.inicio-grid>*{min-width:0}
+.secao h3{flex-wrap:wrap}
+.linha-aprova{display:flex!important;flex-wrap:wrap;gap:8px}
+.linha-aprova .tit{flex:1 1 200px}
+@media (max-width:900px){.inicio-grid{grid-template-columns:1fr}.mural{position:static}}
+@media (max-width:640px){.lem-op{flex-wrap:wrap}.lem-op input,.lem-op select{flex:1 1 45%}.lem-op .btn{flex:1 1 100%}.boas-vindas{display:block}.resumo-dia{margin-top:10px}}
+
 /* narrar */
 .janela.larga{max-width:980px}
 .narra-txt{width:100%;min-height:170px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:15px;line-height:1.5;resize:vertical}
@@ -346,14 +376,16 @@ button.kpi:hover{border-color:var(--muted)}
 
 <script>
 // ---------------- estado ----------------
-const S = { me: null, pessoas: [], projetos: [], tarefas: [], vista: 'inicio', modo: localGet('modo') || 'lista',
+const S = { me: null, pessoas: [], projetos: [], tarefas: [], lembretes: [], vista: 'inicio', modo: null, modoInicio: null, verFeitos: false,
   f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null,
   g: { agrupar: localGet('agrupar') || 'projeto', escala: localGet('escala') || 'semanas', resp: '', proj: '', concluidas: false }, gScroll: null,
   pf: 'abertos', projetoSel: null };
 const PROJ_STATUS = [['planejamento', 'Planejamento'], ['andamento', 'Em andamento'], ['pausado', 'Pausado'], ['concluido', 'Concluído'], ['cancelado', 'Cancelado']];
 const PROJ_STATUS_NOME = Object.fromEntries(PROJ_STATUS);
-const STATUS = [['afazer', 'A fazer'], ['andamento', 'Em andamento'], ['aguardando', 'Aguardando'], ['concluida', 'Concluída']];
+const STATUS = [['afazer', 'A fazer'], ['andamento', 'Fazendo'], ['aguardando', 'Aguardando aprovação'], ['concluida', 'Concluído']];
 const STATUS_NOME = Object.fromEntries(STATUS);
+const RECORR = [['', 'Não repete'], ['diaria', 'Todo dia'], ['dias_uteis', 'Dias úteis (seg a sex)'], ['semanal', 'Toda semana'], ['quinzenal', 'A cada 15 dias'], ['mensal', 'Todo mês'], ['anual', 'Todo ano']];
+const RECORR_NOME = Object.fromEntries(RECORR);
 const PRI = { 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Urgente' };
 const CHECK = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg>';
 
@@ -384,9 +416,13 @@ function toast(msg, erro) {
   document.body.appendChild(t); setTimeout(() => t.remove(), erro ? 5000 : 2500);
 }
 async function carrega() {
-  const [me, pessoas, projetos, tarefas] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas')]);
-  Object.assign(S, { me, pessoas, projetos, tarefas });
+  const [me, pessoas, projetos, tarefas, lembretes] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas'), api('GET', '/api/lembretes')]);
+  Object.assign(S, { me, pessoas, projetos, tarefas, lembretes });
+  // como cada pessoa prefere ver as tarefas (salvo na conta dela)
+  if (!S.modo) S.modo = (me.prefs && me.prefs.visao) || 'lista';
+  if (!S.modoInicio) S.modoInicio = (me.prefs && me.prefs.visaoInicio) || 'lista';
 }
+function salvaPref(chave, valor) { api('PUT', '/api/me/prefs', { [chave]: valor }).then(p => { S.me.prefs = p; }).catch(() => {}); }
 async function recarrega() { try { await carrega(); desenha(); } catch (e) { if (e.message !== 'login') toast(e.message, true); } }
 
 // ---------------- regras ----------------
@@ -395,7 +431,9 @@ const nome = e => e ? ((pessoa(e) || {}).nome || e) : 'Sem responsável';
 const primeiroNome = e => nome(e).split(' ')[0];
 const projeto = id => S.projetos.find(p => p.id === id);
 const podeTudo = t => S.me.gestor || t.criadoPor === S.me.email;
-const podeStatus = t => podeTudo(t) || t.responsavel === S.me.email;
+const podeStatus = t => podeTudo(t) || (t.responsavel === S.me.email && t.status !== 'concluida');
+// aprova (Aguardando aprovação → Concluído) quem criou a tarefa ou um gestor
+const podeAprovar = t => podeTudo(t);
 function situacao(t) {
   if (t.status === 'concluida') return 'ok';
   if (!t.prazo) return 'sem';
@@ -437,13 +475,27 @@ function linha(t) {
   const feito = t.status === 'concluida';
   return `<div class="linha ${feito ? 'feita' : ''}" data-id="${t.id}">
     <button class="chk ${feito ? 'on' : ''}" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="${feito ? 'Reabrir' : 'Concluir'}">${feito ? CHECK : ''}</button>
-    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status !== 'afazer' && !feito ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
+    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status === 'aguardando' ? '<span class="selo hoje">⏳ Aguardando aprovação</span>' : t.status === 'andamento' ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁 ${esc(RECORR_NOME[t.recorrencia])}</span>` : ''}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
     <span class="pri p${t.prioridade} esconde-p">${t.prioridade >= 3 ? PRI[t.prioridade] : ''}</span>
     <span class="esconde-p">${avatar(t.responsavel, 'p')}</span>
     ${seloPrazo(t)}
   </div>`;
 }
 const listaHtml = (ts, vazio) => ts.length ? `<div class="card lista">${ts.map(linha).join('')}</div>` : `<div class="card vazio">${vazio}</div>`;
+// quadro (Kanban) de 4 colunas; concluídas só dos últimos 14 dias para não lotar
+function quadroHtml(ts) {
+  const lim = Date.now() - 14 * 864e5;
+  return `<div class="quadro">${STATUS.map(([k, n]) => {
+    const col = ts.filter(t => t.status === k && (k !== 'concluida' || t.concluidaEm >= lim));
+    return `<div class="coluna" data-col="${k}"><h4><span>${n}</span><span>${col.length}</span></h4>${col.map(t => `
+      <div class="cartao" data-id="${t.id}" draggable="${podeStatus(t)}">
+        <div class="t">${esc(t.titulo)}</div>
+        <div class="m">${seloPrazo(t)}${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁</span>` : ''}${chipProjeto(t.projetoId)}${avatar(t.responsavel, 'p')}</div>
+        ${k === 'aguardando' && podeAprovar(t) ? `<div class="aprova"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>` : ''}
+      </div>`).join('') || (k === 'aguardando' ? '<div class="col-dica">Arraste para cá o que você terminou. Quem pediu a tarefa aprova.</div>' : '')}</div>`;
+  }).join('')}</div><p class="sub" style="margin-top:8px;font-size:12.5px">Arraste os cartões entre as colunas. Quando você termina uma tarefa que outra pessoa pediu, ela vai para <b>Aguardando aprovação</b> e quem pediu aprova. A coluna Concluído mostra os últimos 14 dias.</p>`;
+}
+const alterna = (atual, attr) => `<div class="alterna"><button ${attr}="lista" class="${atual === 'lista' ? 'ativo' : ''}">☰ Lista</button><button ${attr}="quadro" class="${atual === 'quadro' ? 'ativo' : ''}">▦ Quadro</button></div>`;
 
 // ---------------- vistas ----------------
 function desenha() {
@@ -595,6 +647,39 @@ function vProjeto() {
   return html;
 }
 
+// ---------------- mural de lembretes pessoais (só a pessoa vê) ----------------
+function muralHtml() {
+  const h = hoje(), ab = S.lembretes.filter(l => !l.feito), feitos = S.lembretes.filter(l => l.feito).sort((a, b) => b.feitoEm - a.feitoEm);
+  const ordemL = (a, b) => (a.data || '9999').localeCompare(b.data || '9999') || a.id - b.id;
+  const grupos = [
+    ['Atrasados', ab.filter(l => l.data && l.data < h), 'atrasada'],
+    ['Hoje', ab.filter(l => l.data === h), 'hoje'],
+    ['Próximos', ab.filter(l => l.data && l.data > h), ''],
+    ['Sem data', ab.filter(l => !l.data), ''],
+  ];
+  const item = l => `<div class="lem ${l.feito ? 'feito' : ''}" data-lem="${l.id}">
+      <button class="chk ${l.feito ? 'on' : ''}" data-lem-chk="${l.id}" title="${l.feito ? 'Desmarcar' : l.recorrencia ? 'Feito (volta na próxima vez)' : 'Feito'}">${l.feito ? CHECK : ''}</button>
+      <span class="lem-txt" data-lem-edita="${l.id}" title="Clique para editar">${esc(l.texto)}</span>
+      ${l.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[l.recorrencia])}">🔁 ${esc(RECORR_NOME[l.recorrencia])}</span>` : ''}
+      ${l.data && !l.feito ? `<span class="selo ${l.data < h ? 'atrasada' : l.data === h ? 'hoje' : ''}">${l.data === h ? 'hoje' : l.data === somaDias(h, 1) ? 'amanhã' : curta(l.data)}</span>` : ''}
+      <button class="lem-x" data-lem-apaga="${l.id}" title="Apagar">×</button>
+    </div>`;
+  const opt = (v, t) => `<option value="${v}">${t}</option>`;
+  return `<div class="mural-cab"><h3>📌 Meu mural</h3><span class="dica">🔒 Só você vê</span></div>
+    <div class="lem-novo">
+      <input id="lTxt" maxlength="300" placeholder="Anote um lembrete… (Enter para salvar)">
+      <div class="lem-op"><input type="date" id="lData" title="Data (opcional)"><select id="lRec" title="Repetir">${RECORR.map(([k, n]) => opt(k, k ? '🔁 ' + n : 'Não repete')).join('')}</select><button class="btn prim peq" id="lAdd">Adicionar</button></div>
+    </div>
+    ${ab.length ? grupos.filter(g => g[1].length).map(([n, ls, c]) => `<div class="lem-grupo"><div class="lem-gt ${c}">${n} <span class="n">${ls.length}</span></div>${ls.sort(ordemL).map(item).join('')}</div>`).join('')
+      : '<div class="vazio" style="padding:18px 6px">Nada no mural. Anote aqui pequenas coisas para não esquecer: ligar para alguém, conferir algo toda sexta, um checklist do dia.</div>'}
+    ${feitos.length ? `<button class="lem-ver" data-lem-feitos>${S.verFeitos ? '▾' : '▸'} Feitos recentes (${feitos.length})</button>${S.verFeitos ? feitos.map(item).join('') : ''}` : ''}`;
+}
+async function addLembrete() {
+  const t = $('#lTxt'); if (!t || !t.value.trim()) { t && t.focus(); return; }
+  try { const l = await api('POST', '/api/lembretes', { texto: t.value, data: $('#lData').value || null, recorrencia: $('#lRec').value || null }); S.lembretes.push(l); desenha(); const n = $('#lTxt'); n && n.focus(); }
+  catch (e) { toast(e.message, true); }
+}
+
 function vInicio() {
   const abertas = S.tarefas.filter(t => t.status !== 'concluida');
   const atras = abertas.filter(t => situacao(t) === 'atrasada'), hj = abertas.filter(t => situacao(t) === 'hoje'), sem = abertas.filter(t => situacao(t) === 'semana');
@@ -602,8 +687,21 @@ function vInicio() {
   const conclMes = S.tarefas.filter(t => t.status === 'concluida' && t.concluidaEm >= ini.getTime());
   const comPrazo = conclMes.filter(t => t.prazo), okMes = comPrazo.filter(t => ymd(new Date(t.concluidaEm)) <= t.prazo).length;
   const minhas = abertas.filter(t => t.responsavel === S.me.email).sort(ordem);
-  const criei = abertas.filter(t => t.criadoPor === S.me.email && t.responsavel !== S.me.email).sort(ordem);
+  const minhasQuadro = S.tarefas.filter(t => t.responsavel === S.me.email).sort(ordem);
+  const criei = abertas.filter(t => t.criadoPor === S.me.email && t.responsavel !== S.me.email && t.status !== 'aguardando').sort(ordem);
+  const aprovar = S.tarefas.filter(t => t.status === 'aguardando' && podeAprovar(t) && t.responsavel !== S.me.email).sort(ordem);
   const h = new Date().getHours(), saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  // resumo do dia, como um assistente pessoal
+  const hj0 = hoje(), lemAbertos = S.lembretes.filter(l => !l.feito), lemHoje = lemAbertos.filter(l => l.data && l.data <= hj0);
+  const minhasHoje = minhas.filter(t => t.prazo === hj0).length, minhasAtras = minhas.filter(t => situacao(t) === 'atrasada').length;
+  const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+  const partes = [];
+  if (minhasHoje) partes.push(`<b>${plural(minhasHoje, 'tarefa', 'tarefas')}</b> para hoje`);
+  if (minhasAtras) partes.push(`<b style="color:var(--red)">${plural(minhasAtras, 'atrasada', 'atrasadas')}</b>`);
+  if (lemHoje.length) partes.push(`<b>${plural(lemHoje.length, 'lembrete', 'lembretes')}</b> do dia`);
+  if (aprovar.length) partes.push(`<b>${plural(aprovar.length, 'tarefa esperando', 'tarefas esperando')}</b> sua aprovação`);
+  const resumo = partes.length ? `Hoje você tem ${partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes.slice(-1) : partes[0]}.` : (minhas.length ? `Nada vence hoje. Você tem ${plural(minhas.length, 'tarefa aberta', 'tarefas abertas')} no total.` : 'Tudo em dia por aqui. 🎉');
+  const nomeSo = primeiroNome(S.me.email);
   const ag = S.me.agenda || {};
   const avisoAg = ag.disponivel && (ag.erro || (!ag.conectado && localGet('agendaDispensada') !== '1'))
     ? `<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid ${ag.erro ? 'var(--red)' : 'var(--blue)'}">
@@ -612,15 +710,30 @@ function vInicio() {
         <a class="btn prim" href="/api/google/conectar" style="text-decoration:none">${ag.erro ? 'Reconectar' : 'Conectar'}</a>
         ${ag.erro ? '' : '<button class="btn" data-dispensa-agenda>Agora não</button>'}
       </div>` : '';
-  return `${avisoAg}<h2>${saud}, ${esc(primeiroNome(S.me.email))}</h2>
-    <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-    <div class="kpis">
+  return `${avisoAg}
+    <div class="boas-vindas">
+      <div><h2>${saud}, ${esc(nomeSo)}! 👋</h2>
+      <p class="sub" style="margin:2px 0 0">Bem-vindo(a) ao seu espaço. ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.</p></div>
+      <div class="resumo-dia">✨ ${resumo}</div>
+    </div>
+    <div class="inicio-grid">
+      <div class="mural card">${muralHtml()}</div>
+      <div>
+        ${aprovar.length ? `<div class="secao" style="margin-top:0"><h3>⏳ Esperando sua aprovação <span class="n">${aprovar.length}</span></h3><div class="card lista">${aprovar.map(t => `
+          <div class="linha linha-aprova" data-id="${t.id}">
+            <div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(nome(t.responsavel))} terminou ${chipProjeto(t.projetoId)}</small></div>
+            <button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button>
+          </div>`).join('')}</div></div>` : ''}
+        <div class="secao" style="${aprovar.length ? '' : 'margin-top:0'}"><h3>Minhas tarefas <span class="n">${minhas.length}</span><span style="margin-left:auto">${alterna(S.modoInicio, 'data-modo-inicio')}</span></h3>
+          ${S.modoInicio === 'quadro' ? quadroHtml(minhasQuadro) : listaHtml(minhas, 'Nenhuma tarefa aberta com você. 🎉')}</div>
+      </div>
+    </div>
+    <div class="kpis" style="margin-top:24px">
       <button class="kpi vermelho" data-ir="atrasadas"><div class="v">${atras.length}</div><div class="r">Atrasadas</div></button>
       <button class="kpi ambar" data-ir="hoje"><div class="v">${hj.length}</div><div class="r">Vencem hoje</div></button>
       <button class="kpi azul" data-ir="semana"><div class="v">${sem.length}</div><div class="r">Próximos 7 dias</div></button>
       <div class="kpi verde"><div class="v">${conclMes.length}</div><div class="r">Concluídas no mês${comPrazo.length ? ` · ${Math.round(okMes / comPrazo.length * 100)}% no prazo` : ''}</div></div>
     </div>
-    <div class="secao"><h3>Minhas tarefas <span class="n">${minhas.length}</span></h3>${listaHtml(minhas, 'Nenhuma tarefa aberta com você. 🎉')}</div>
     ${criei.length ? `<div class="secao"><h3>Que eu passei para outras pessoas <span class="n">${criei.length}</span></h3>${listaHtml(criei, '')}</div>` : ''}
     ${S.me.gestor && atras.length ? `<div class="secao"><h3>Atrasadas da equipe <span class="n">${atras.length}</span></h3>${listaHtml(atras.sort(ordem), '')}</div>` : ''}`;
 }
@@ -647,19 +760,7 @@ function vTarefas() {
   const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
   const ts = filtra();
   let corpo;
-  if (S.modo === 'lista') corpo = listaHtml(ts, 'Nenhuma tarefa com esses filtros.');
-  else {
-    // no quadro, concluídas só dos últimos 14 dias para não lotar a coluna
-    const lim = Date.now() - 14 * 864e5;
-    corpo = `<div class="quadro">${STATUS.map(([k, n]) => {
-      const col = ts.filter(t => t.status === k && (k !== 'concluida' || t.concluidaEm >= lim));
-      return `<div class="coluna" data-col="${k}"><h4><span>${n}</span><span>${col.length}</span></h4>${col.map(t => `
-        <div class="cartao" data-id="${t.id}" draggable="${podeStatus(t)}">
-          <div class="t">${esc(t.titulo)}</div>
-          <div class="m">${seloPrazo(t)}${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}${chipProjeto(t.projetoId)}${avatar(t.responsavel, 'p')}</div>
-        </div>`).join('')}</div>`;
-    }).join('')}</div><p class="sub" style="margin-top:8px;font-size:12.5px">Arraste os cartões entre as colunas para mudar a situação. A coluna Concluída mostra os últimos 14 dias.</p>`;
-  }
+  corpo = S.modo === 'lista' ? listaHtml(ts, 'Nenhuma tarefa com esses filtros.') : quadroHtml(ts);
   return `<h2>Tarefas</h2><p class="sub">${ts.length} ${ts.length === 1 ? 'tarefa' : 'tarefas'}</p>
     <div class="filtros">
       <input type="search" id="fQ" placeholder="Buscar tarefa…" value="${esc(f.q)}">
@@ -667,7 +768,7 @@ function vTarefas() {
       <select id="fProj">${opt('', 'Todos os projetos', f.proj)}${opt('_sem', 'Sem projeto', f.proj)}${S.projetos.filter(p => p.ativo).map(p => opt(p.id, p.nome, f.proj)).join('')}</select>
       ${S.modo === 'lista' ? `<select id="fSit">${opt('abertas', 'Abertas', f.sit)}${opt('todas', 'Todas', f.sit)}${STATUS.map(([k, n]) => opt(k, n, f.sit)).join('')}</select>` : ''}
       <select id="fPrazo">${opt('', 'Qualquer prazo', f.prazo)}${opt('atrasada', 'Atrasadas', f.prazo)}${opt('hoje', 'Vencem hoje', f.prazo)}${opt('semana', 'Próximos 7 dias', f.prazo)}${opt('sem', 'Sem prazo', f.prazo)}</select>
-      <div class="alterna"><button data-modo="lista" class="${S.modo === 'lista' ? 'ativo' : ''}">Lista</button><button data-modo="quadro" class="${S.modo === 'quadro' ? 'ativo' : ''}">Quadro</button></div>
+      ${alterna(S.modo, 'data-modo')}
     </div>${corpo}`;
 }
 
@@ -755,7 +856,10 @@ function janelaTarefa(t, padrao) {
       <label class="campo"><span>Prazo</span><input type="date" id="tPrazo" value="${esc(t.prazo || '')}" ${dis}></label>
       <label class="campo"><span>Situação</span><select id="tSt" ${st ? '' : 'disabled'}>${STATUS.map(([k, n]) => opt(k, n, t.status)).join('')}</select></label>
       <label class="campo"><span>Prioridade</span><select id="tPri" ${dis}>${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select></label>
+      <label class="campo"><span>Repetir</span><select id="tRec" ${dis}>${RECORR.map(([k, n]) => opt(k, n, t.recorrencia || '')).join('')}</select></label>
     </div>
+    ${!nova && t.status === 'aguardando' && podeAprovar(t) ? `<div class="aviso" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1">⏳ ${esc(primeiroNome(t.responsavel))} terminou esta tarefa e está esperando sua aprovação.</span><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>` : ''}
+    ${!nova && t.recorrencia ? `<p class="st" style="margin:-6px 0 12px">🔁 Ao concluir, a próxima vez (${esc(RECORR_NOME[t.recorrencia].toLowerCase())}) é criada sozinha.</p>` : ''}
     ${nova ? '' : `<div class="hist"><h4>Comentários e histórico</h4><div id="tHist"><div class="st">Carregando…</div></div>
       <div class="novo-coment"><textarea id="tCom" maxlength="2000" placeholder="Escreva um comentário…"></textarea><button class="btn" id="tComBtn">Enviar</button></div>
       <p class="st" style="margin:10px 0 0">Criada por ${esc(nome(t.criadoPor))} em ${brData(ymd(new Date(t.criadoEm)))}</p></div>`}`;
@@ -765,11 +869,11 @@ function janelaTarefa(t, padrao) {
   const salva = j.querySelector('#tSalva');
   if (salva) salva.onclick = async () => {
     const dados = tudo ? { titulo: $('#tTit').value, descricao: $('#tDesc').value, responsavel: $('#tResp').value || null, inicio: $('#tIni').value || null, prazo: $('#tPrazo').value || null,
-      status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null } : { status: $('#tSt').value };
+      status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null, recorrencia: $('#tRec').value || null } : { status: $('#tSt').value };
     if (tudo && !dados.titulo.trim()) { toast('Dê um título à tarefa.', true); $('#tTit').focus(); return; }
     if (tudo && dados.inicio && dados.prazo && dados.prazo < dados.inicio) { toast('O prazo não pode ser antes do início.', true); return; }
     salva.disabled = true;
-    try { await api(nova ? 'POST' : 'PUT', nova ? '/api/tarefas' : '/api/tarefas/' + t.id, dados); fechaJanela(); toast(nova ? 'Tarefa criada.' : 'Tarefa salva.'); await recarrega(); }
+    try { const r = await api(nova ? 'POST' : 'PUT', nova ? '/api/tarefas' : '/api/tarefas/' + t.id, dados); fechaJanela(); avisaStatus(r, nova ? 'Tarefa criada.' : 'Tarefa salva.'); await recarrega(); }
     catch (e) { toast(e.message, true); salva.disabled = false; }
   };
   const del = j.querySelector('#tDel');
@@ -971,21 +1075,27 @@ function revisaNarracao(p, textoOriginal) {
       <input type="date" value="${esc(t.inicio || '')}" data-k="inicio" title="Início">
       <input type="date" value="${esc(t.prazo || '')}" data-k="prazo" title="Prazo">
       <select data-k="prioridade">${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select>
-      ${t.descricao ? `<div class="det">${esc(t.descricao)}</div>` : ''}
+      ${t.descricao || t.recorrencia ? `<div class="det">${t.recorrencia ? `🔁 ${esc(RECORR_NOME[t.recorrencia])}${t.descricao ? ' · ' : ''}` : ''}${esc(t.descricao || '')}</div>` : ''}
     </div>`).join('');
+  const lems = (p.lembretes || []).map((l, i) => `<div class="lem" data-li="${i}"><input type="checkbox" checked data-lon style="width:18px;height:18px;accent-color:var(--brand)">
+      <input type="text" value="${esc(l.texto)}" data-ltxt maxlength="300" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
+      ${l.recorrencia ? `<span class="st">🔁 ${esc(RECORR_NOME[l.recorrencia])}</span>` : ''}${l.data ? `<span class="selo">${brData(l.data)}</span>` : ''}</div>`).join('');
+  const total = () => p.tarefas.length + (p.lembretes || []).length;
+  const rotulo = (nt, nl) => [nt ? `${nt} ${nt === 1 ? 'tarefa' : 'tarefas'}` : '', nl ? `${nl} ${nl === 1 ? 'lembrete' : 'lembretes'}` : ''].filter(Boolean).join(' e ');
   const corpo = `
     ${p.resumo ? `<div class="resumo-ia">✨ ${esc(p.resumo)}</div>` : ''}
     ${p.duvidas.length ? `<div class="duvidas"><b>Confira antes de criar:</b><ul>${p.duvidas.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
     ${novos}
-    ${p.tarefas.length ? `<div class="prop cab"><span></span><span>Tarefa</span><span>Responsável</span><span>Projeto</span><span>Início</span><span>Prazo</span><span>Prioridade</span></div>${linhas}`
-      : '<div class="card vazio">A IA não encontrou tarefas nesta narração. Volte e descreva o que precisa ser feito.</div>'}`;
-  const n = p.tarefas.length;
-  const j = abreJanela('Confira as tarefas', corpo, `<button class="btn esq" id="nVolta">‹ Voltar e editar a narração</button><button class="btn" data-fecha2>Cancelar</button>${n ? `<button class="btn prim" id="nCria">Criar ${n} ${n === 1 ? 'tarefa' : 'tarefas'}</button>` : ''}`);
+    ${p.tarefas.length ? `<div class="prop cab"><span></span><span>Tarefa</span><span>Responsável</span><span>Projeto</span><span>Início</span><span>Prazo</span><span>Prioridade</span></div>${linhas}` : ''}
+    ${lems ? `<div class="secao" style="margin-top:16px"><h3>📌 Lembretes para o seu mural <span class="dica">🔒 só você vê</span></h3>${lems}</div>` : ''}
+    ${total() ? '' : '<div class="card vazio">A IA não encontrou tarefas nem lembretes nesta narração. Volte e descreva o que precisa ser feito.</div>'}`;
+  const j = abreJanela('Confira o que a IA entendeu', corpo, `<button class="btn esq" id="nVolta">‹ Voltar e editar a narração</button><button class="btn" data-fecha2>Cancelar</button>${total() ? `<button class="btn prim" id="nCria">Criar ${rotulo(p.tarefas.length, (p.lembretes || []).length)}</button>` : ''}`);
   j.querySelector('.janela').classList.add('larga');
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   j.querySelector('#nVolta').onclick = () => janelaNarrar(textoOriginal);
-  const conta = () => { const k = j.querySelectorAll('[data-on]:checked').length, b = j.querySelector('#nCria'); if (b) { b.textContent = `Criar ${k} ${k === 1 ? 'tarefa' : 'tarefas'}`; b.disabled = !k; } };
+  const conta = () => { const kt = j.querySelectorAll('[data-on]:checked').length, kl = j.querySelectorAll('[data-lon]:checked').length, b = j.querySelector('#nCria'); if (b) { b.textContent = kt + kl ? `Criar ${rotulo(kt, kl)}` : 'Nada marcado'; b.disabled = !(kt + kl); } };
   j.addEventListener('change', e => {
+    if (e.target.matches('[data-lon]')) { e.target.closest('.lem').style.opacity = e.target.checked ? 1 : .45; conta(); }
     if (e.target.matches('[data-on]')) { e.target.closest('.prop').classList.toggle('off', !e.target.checked); conta(); }
     if (e.target.matches('[data-pon]')) e.target.closest('.pnovo').style.opacity = e.target.checked ? 1 : .45;
   });
@@ -1007,13 +1117,23 @@ function revisaNarracao(p, textoOriginal) {
       const t = p.tarefas[+el.dataset.i], v = k => el.querySelector(`[data-k="${k}"]`).value;
       const pr = v('projeto'), projetoId = pr.startsWith('n:') ? (idDoNovo[pr.slice(2)] || null) : (pr ? +pr : null);
       let inicio = v('inicio') || null, prazo = v('prazo') || null; if (inicio && prazo && prazo < inicio) [inicio, prazo] = [prazo, inicio];
-      try { await api('POST', '/api/tarefas', { titulo: v('titulo'), descricao: t.descricao, responsavel: v('responsavel') || null, projetoId, inicio, prazo, prioridade: +v('prioridade') }); ok++; }
+      try { await api('POST', '/api/tarefas', { titulo: v('titulo'), descricao: t.descricao, responsavel: v('responsavel') || null, projetoId, inicio, prazo, prioridade: +v('prioridade'), recorrencia: t.recorrencia || null }); ok++; }
       catch (e) { falhas.push(`${v('titulo')}: ${e.message}`); }
     }
+    // 3) lembretes marcados (vão para o mural pessoal)
+    let okL = 0;
+    for (const el of j.querySelectorAll('.lem[data-li]')) {
+      if (!el.querySelector('[data-lon]').checked) continue;
+      const l = p.lembretes[+el.dataset.li];
+      try { await api('POST', '/api/lembretes', { texto: el.querySelector('[data-ltxt]').value, data: l.data, recorrencia: l.recorrencia }); okL++; }
+      catch (e) { falhas.push(`Lembrete: ${e.message}`); }
+    }
     fechaJanela();
-    if (falhas.length) toast(`${ok} criadas; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${ok} ${ok === 1 ? 'tarefa criada' : 'tarefas criadas'}.`);
+    const feito = rotulo(ok, okL) || 'Nada';
+    if (falhas.length) toast(`${feito} ${ok + okL === 1 ? 'criado' : 'criados'}; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${feito} ${ok + okL === 1 ? 'criado' : 'criados'}. ✅`);
     const unico = Object.values(idDoNovo)[0];
-    S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico);
+    // só lembretes: volta para o mural; com tarefas: mostra no cronograma
+    if (ok) { S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico); } else S.vista = 'inicio';
     await recarrega(); window.scrollTo(0, 0);
   };
 }
@@ -1052,10 +1172,18 @@ document.addEventListener('pointerup', () => {
 document.addEventListener('pointercancel', () => { if (arr) { arr = null; desenha(); } });
 
 // ---------------- ações ----------------
-async function mudaStatus(id, status) {
+// mensagem depois de mudar uma tarefa: enviada para aprovação, concluída, próxima ocorrência criada
+function avisaStatus(r, padrao) {
+  if (r && r.enviadaParaAprovacao) toast(`Enviada para aprovação de ${primeiroNome(r.criadoPor)}. ⏳`);
+  else if (r && r.proximaOcorrencia) toast('Concluída ✅ A próxima vez já foi criada. 🔁');
+  else if (padrao) toast(padrao);
+}
+async function mudaStatus(id, status, msg) {
   const t = S.tarefas.find(x => x.id === id); if (!t || t.status === status) return;
-  const ant = t.status; t.status = status; if (status === 'concluida') t.concluidaEm = Date.now(); desenha();
-  try { await api('PUT', '/api/tarefas/' + id, { status }); if (status === 'concluida') toast('Tarefa concluída.'); recarregaSilencioso(); }
+  // quem não aprova a tarefa leva até "Aguardando aprovação" (o servidor confirma)
+  const alvo = status === 'concluida' && !podeAprovar(t) ? 'aguardando' : status;
+  const ant = t.status; t.status = alvo; if (alvo === 'concluida') t.concluidaEm = Date.now(); desenha();
+  try { const r = await api('PUT', '/api/tarefas/' + id, { status }); avisaStatus(r, msg || (r.status === 'concluida' ? 'Tarefa concluída. ✅' : '')); recarregaSilencioso(); }
   catch (e) { t.status = ant; desenha(); toast(e.message, true); }
 }
 
@@ -1083,7 +1211,28 @@ main.addEventListener('click', e => {
   if (chk) { e.stopPropagation(); const t = S.tarefas.find(x => x.id === +chk.dataset.chk); mudaStatus(t.id, t.status === 'concluida' ? 'afazer' : 'concluida'); return; }
   const ir = e.target.closest('[data-ir]');
   if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); return; }
-  const md = e.target.closest('[data-modo]'); if (md) { S.modo = md.dataset.modo; localSet('modo', S.modo); desenha(); return; }
+  const md = e.target.closest('[data-modo]'); if (md) { S.modo = md.dataset.modo; salvaPref('visao', S.modo); desenha(); return; }
+  const mi = e.target.closest('[data-modo-inicio]'); if (mi) { S.modoInicio = mi.dataset.modoInicio; salvaPref('visaoInicio', S.modoInicio); desenha(); return; }
+  const apv = e.target.closest('[data-aprova]'); if (apv) { e.stopPropagation(); fechaJanela(); mudaStatus(+apv.dataset.aprova, 'concluida', 'Tarefa aprovada. ✅'); return; }
+  const dv = e.target.closest('[data-devolve]'); if (dv) { e.stopPropagation(); fechaJanela(); mudaStatus(+dv.dataset.devolve, 'andamento', 'Tarefa devolvida para ajustes. Deixe um comentário dizendo o que falta.'); return; }
+  // lembretes
+  if (e.target.closest('#lAdd')) { addLembrete(); return; }
+  if (e.target.closest('[data-lem-feitos]')) { S.verFeitos = !S.verFeitos; desenha(); return; }
+  const lc = e.target.closest('[data-lem-chk]');
+  if (lc) {
+    const l = S.lembretes.find(x => x.id === +lc.dataset.lemChk); if (!l) return;
+    api('PUT', '/api/lembretes/' + l.id, { feito: !l.feito }).then(n => { Object.assign(l, n); if (n.avancou) toast(`Feito! 🔁 Volta ${n.data === hoje() ? 'hoje' : 'em ' + brData(n.data)}.`); desenha(); }).catch(er => toast(er.message, true));
+    return;
+  }
+  const la = e.target.closest('[data-lem-apaga]');
+  if (la) { api('DELETE', '/api/lembretes/' + la.dataset.lemApaga).then(() => { S.lembretes = S.lembretes.filter(x => x.id !== +la.dataset.lemApaga); desenha(); }).catch(er => toast(er.message, true)); return; }
+  const le = e.target.closest('[data-lem-edita]');
+  if (le) {
+    const l = S.lembretes.find(x => x.id === +le.dataset.lemEdita); if (!l) return;
+    const novo = prompt('Editar lembrete:', l.texto); if (novo == null || !novo.trim() || novo === l.texto) return;
+    api('PUT', '/api/lembretes/' + l.id, { texto: novo }).then(n => { Object.assign(l, n); desenha(); }).catch(er => toast(er.message, true));
+    return;
+  }
   const mes = e.target.closest('[data-mes]');
   if (mes) { const n = +mes.dataset.mes; if (n === 0) { const d = new Date(); S.mes = [d.getFullYear(), d.getMonth()]; } else { const d = new Date(S.mes[0], S.mes[1] + n, 1); S.mes = [d.getFullYear(), d.getMonth()]; } desenha(); return; }
   if (e.target.closest('[data-limpa-dia]')) { S.diaSel = null; desenha(); return; }
@@ -1136,7 +1285,8 @@ main.addEventListener('dragover', e => { const col = e.target.closest('.coluna')
 main.addEventListener('drop', e => { const col = e.target.closest('.coluna'); if (!col || arrastado == null) return; e.preventDefault(); const id = arrastado; arrastado = null; mudaStatus(id, col.dataset.col); });
 
 // atualiza sozinho a cada minuto e ao voltar para a aba
-setInterval(() => { if (!document.hidden) recarregaSilencioso(); }, 60000);
+main.addEventListener('keydown', e => { if (e.target.id === 'lTxt' && e.key === 'Enter') { e.preventDefault(); addLembrete(); } });
+setInterval(() => { if (!document.hidden) recarregaSilencioso(); }, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) recarregaSilencioso(); });
 
 // volta da conexão com o Google Agenda

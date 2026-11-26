@@ -48,14 +48,38 @@ const agenda = require('./agenda')({ pool, clientId: GOOGLE_CLIENT_ID, clientSec
   dominio: ALLOWED_DOMAIN, appUrl: APP_URL, fakeBase: DEV ? process.env.GOOGLE_FAKE_BASE || null : null });
 
 const STATUS = ['afazer', 'andamento', 'aguardando', 'concluida'];
-const STATUS_NOME = { afazer: 'A fazer', andamento: 'Em andamento', aguardando: 'Aguardando', concluida: 'Concluída' };
+const STATUS_NOME = { afazer: 'A fazer', andamento: 'Fazendo', aguardando: 'Aguardando aprovação', concluida: 'Concluída' };
 const PRIORIDADE_NOME = { 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Urgente' };
+// recorrência de tarefas e lembretes: ao concluir, a próxima ocorrência é criada (tarefa) ou a data avança (lembrete)
+const RECORRENCIAS = { diaria: 'Todo dia', dias_uteis: 'Dias úteis', semanal: 'Toda semana', quinzenal: 'A cada 15 dias', mensal: 'Todo mês', anual: 'Todo ano' };
+const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+function somaRegra(s, regra) {
+  const [a, m, d] = s.split('-').map(Number), dt = new Date(Date.UTC(a, m - 1, d));
+  if (regra === 'diaria') dt.setUTCDate(dt.getUTCDate() + 1);
+  else if (regra === 'dias_uteis') { do dt.setUTCDate(dt.getUTCDate() + 1); while ([0, 6].includes(dt.getUTCDay())); }
+  else if (regra === 'semanal') dt.setUTCDate(dt.getUTCDate() + 7);
+  else if (regra === 'quinzenal') dt.setUTCDate(dt.getUTCDate() + 14);
+  return dt.toISOString().slice(0, 10);
+}
+// soma meses mantendo o dia original; dia 31 vira o último dia do mês quando ele não existe
+function somaMeses(s, n) {
+  const [a, m, d] = s.split('-').map(Number), alvo = new Date(Date.UTC(a, m - 1 + n, 1)), ult = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${alvo.getUTCFullYear()}-${String(alvo.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(d, ult)).padStart(2, '0')}`;
+}
+// próxima data a partir de "base": avança pela regra até chegar a hoje ou depois (não acumula ocorrências atrasadas)
+function proximaData(base, regra) {
+  const h = hojeSP(); base = base || h;
+  if (regra === 'mensal' || regra === 'anual') { const passo = regra === 'mensal' ? 1 : 12; for (let k = 1; k < 2000; k++) { const s = somaMeses(base, k * passo); if (s >= h) return s; } }
+  let s = somaRegra(base, regra), n = 0; while (s < h && n++ < 5000) s = somaRegra(s, regra); return s;
+}
+const difDias = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5);
+const somaDias = (s, n) => { const x = new Date(Date.parse(s + 'T00:00:00Z') + n * 864e5); return x.toISOString().slice(0, 10); };
 
 async function initDb() {
   await pool.query(`CREATE TABLE IF NOT EXISTS pessoas (
     email text PRIMARY KEY, nome text NOT NULL, foto text, cargo text, area text,
     papel text NOT NULL DEFAULT 'membro', ativo boolean NOT NULL DEFAULT true,
-    criado_em timestamptz NOT NULL DEFAULT now(), ultimo_acesso timestamptz)`);
+    criado_em timestamptz NOT NULL DEFAULT now(), ultimo_acesso timestamptz, prefs text)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS projetos (
     id serial PRIMARY KEY, nome text NOT NULL, cor text NOT NULL DEFAULT '#9d162e', ativo boolean NOT NULL DEFAULT true,
     descricao text, responsavel text, inicio date, fim date, status text NOT NULL DEFAULT 'andamento',
@@ -63,12 +87,19 @@ async function initDb() {
   await pool.query(`CREATE TABLE IF NOT EXISTS tarefas (
     id serial PRIMARY KEY, titulo text NOT NULL, descricao text, responsavel text, criado_por text NOT NULL,
     projeto_id integer, prioridade integer NOT NULL DEFAULT 2, status text NOT NULL DEFAULT 'afazer', inicio date, prazo date,
-    criado_em timestamptz NOT NULL DEFAULT now(), atualizado_em timestamptz NOT NULL DEFAULT now(), concluida_em timestamptz)`);
+    criado_em timestamptz NOT NULL DEFAULT now(), atualizado_em timestamptz NOT NULL DEFAULT now(), concluida_em timestamptz,
+    recorrencia text, recorrencia_de integer)`);
+  // lembretes pessoais: só o dono vê (checklist, lembretes com ou sem data, que podem se repetir)
+  await pool.query(`CREATE TABLE IF NOT EXISTS lembretes (
+    id serial PRIMARY KEY, dono text NOT NULL, texto text NOT NULL, data date, recorrencia text,
+    feito_em timestamptz, ultima_vez timestamptz, criado_em timestamptz NOT NULL DEFAULT now())`);
   // colunas que vieram depois da primeira versão (bancos já criados recebem aqui)
   for (const sql of [
     'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS descricao text', 'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS responsavel text',
     'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS inicio date', 'ALTER TABLE projetos ADD COLUMN IF NOT EXISTS fim date',
     "ALTER TABLE projetos ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'andamento'", 'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS inicio date',
+    'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS recorrencia text', 'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS recorrencia_de integer',
+    'ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS prefs text',
   ]) { try { await pool.query(sql); } catch (e) { if (process.env.DATABASE_URL !== 'memoria') throw e; } }
   await pool.query(`CREATE TABLE IF NOT EXISTS comentarios (
     id serial PRIMARY KEY, tarefa_id integer NOT NULL, autor text NOT NULL, tipo text NOT NULL DEFAULT 'nota',
@@ -105,6 +136,7 @@ function tarefaOut(t, nComent) {
   return {
     id: t.id, titulo: t.titulo, descricao: t.descricao || '', responsavel: t.responsavel || null, criadoPor: t.criado_por,
     projetoId: t.projeto_id || null, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo),
+    recorrencia: t.recorrencia || null,
     criadoEm: ms(t.criado_em), atualizadoEm: ms(t.atualizado_em), concluidaEm: ms(t.concluida_em), comentarios: nComent || 0,
   };
 }
@@ -189,7 +221,59 @@ const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json(
 app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public', 'app.html')));
 
 // ---------- eu ----------
-app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email) }));
+const lePrefs = p => { try { return JSON.parse(p.prefs || '{}') || {}; } catch { return {}; } };
+app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa) }));
+// preferências de cada pessoa (como quer ver as tarefas: lista ou quadro), valem em qualquer computador
+const PREFS = { visao: ['lista', 'quadro'], visaoInicio: ['lista', 'quadro'] };
+app.put('/api/me/prefs', auth, express.json({ limit: '5kb' }), async (req, res) => {
+  const p = lePrefs(req.pessoa), b = req.body || {};
+  for (const [k, ok] of Object.entries(PREFS)) if (b[k] !== undefined && ok.includes(b[k])) p[k] = b[k];
+  await pool.query('UPDATE pessoas SET prefs=$2 WHERE email=$1', [req.email, JSON.stringify(p)]);
+  res.json(p);
+});
+
+// ---------- lembretes pessoais (só o dono vê) ----------
+const lembreteOut = l => ({ id: l.id, texto: l.texto, data: fmtData(l.data), recorrencia: l.recorrencia || null, feito: !!l.feito_em, feitoEm: ms(l.feito_em), ultimaVez: ms(l.ultima_vez), criadoEm: ms(l.criado_em) });
+app.get('/api/lembretes', auth, async (req, res) => {
+  // abertos + os feitos nos últimos 7 dias (para conseguir desmarcar)
+  const r = await pool.query("SELECT * FROM lembretes WHERE dono=$1 AND (feito_em IS NULL OR feito_em > now() - interval '7 days') ORDER BY id", [req.email]);
+  res.json(r.rows.map(lembreteOut));
+});
+function validaLembrete(b, ant) {
+  const o = { texto: ant ? ant.texto : null, data: ant ? fmtData(ant.data) : null, recorrencia: ant ? ant.recorrencia : null };
+  if (b.texto !== undefined) o.texto = txt(b.texto, 300);
+  if (!o.texto) return { erro: 'Escreva o lembrete.' };
+  if (b.data !== undefined) { o.data = dataOk(b.data); if (o.data === undefined) return { erro: 'Data inválida.' }; }
+  if (b.recorrencia !== undefined) { o.recorrencia = b.recorrencia || null; if (o.recorrencia && !RECORRENCIAS[o.recorrencia]) return { erro: 'Repetição inválida.' }; }
+  return { dados: o };
+}
+app.post('/api/lembretes', auth, express.json({ limit: '10kb' }), async (req, res) => {
+  const n = await pool.query('SELECT count(*)::int AS n FROM lembretes WHERE dono=$1 AND feito_em IS NULL', [req.email]);
+  if (n.rows[0].n >= 300) return res.status(400).json({ erro: 'Você já tem muitos lembretes abertos. Conclua ou apague alguns.' });
+  const v = validaLembrete(req.body || {}); if (v.erro) return res.status(400).json(v);
+  const r = await pool.query('INSERT INTO lembretes (dono, texto, data, recorrencia) VALUES ($1,$2,$3,$4) RETURNING *', [req.email, v.dados.texto, v.dados.data, v.dados.recorrencia]);
+  res.json(lembreteOut(r.rows[0]));
+});
+app.put('/api/lembretes/:id', auth, express.json({ limit: '10kb' }), async (req, res) => {
+  const r = await pool.query('SELECT * FROM lembretes WHERE id=$1 AND dono=$2', [parseInt(req.params.id, 10), req.email]); const l = r.rows[0];
+  if (!l) return res.status(404).json({ erro: 'Lembrete não encontrado.' });
+  const b = req.body || {};
+  const v = validaLembrete(b, l); if (v.erro) return res.status(400).json(v);
+  let { data } = v.dados, feito_em = l.feito_em, ultima_vez = l.ultima_vez, avancou = false;
+  if (b.feito === true) {
+    ultima_vez = new Date();
+    // lembrete que se repete: não fica "feito", a data pula para a próxima vez
+    if (v.dados.recorrencia) { data = proximaData(data || hojeSP(), v.dados.recorrencia); feito_em = null; avancou = true; }
+    else feito_em = new Date();
+  } else if (b.feito === false) feito_em = null;
+  const r2 = await pool.query('UPDATE lembretes SET texto=$2, data=$3, recorrencia=$4, feito_em=$5, ultima_vez=$6 WHERE id=$1 RETURNING *', [l.id, v.dados.texto, data, v.dados.recorrencia, feito_em, ultima_vez]);
+  res.json({ ...lembreteOut(r2.rows[0]), avancou });
+});
+app.delete('/api/lembretes/:id', auth, async (req, res) => {
+  const r = await pool.query('DELETE FROM lembretes WHERE id=$1 AND dono=$2 RETURNING id', [parseInt(req.params.id, 10), req.email]);
+  if (!r.rows[0]) return res.status(404).json({ erro: 'Lembrete não encontrado.' });
+  res.json({ ok: true });
+});
 
 // ---------- Google Agenda ----------
 const retornoGoogle = req => (APP_URL || `${req.protocol}://${req.get('host')}`) + '/api/google/retorno';
@@ -328,18 +412,38 @@ async function validaTarefa(b, parcial) {
   if (b.status !== undefined) { out.status = String(b.status); if (!STATUS.includes(out.status)) return erro('Situação inválida.'); }
   if (b.prazo !== undefined) { out.prazo = dataOk(b.prazo); if (out.prazo === undefined) return erro('Prazo inválido.'); }
   if (b.inicio !== undefined) { out.inicio = dataOk(b.inicio); if (out.inicio === undefined) return erro('Data de início inválida.'); }
+  if (b.recorrencia !== undefined) { out.recorrencia = b.recorrencia || null; if (out.recorrencia && !RECORRENCIAS[out.recorrencia]) return erro('Recorrência inválida.'); }
   return { dados: out };
+}
+
+// tarefa recorrente concluída: cria a próxima ocorrência (mesmo responsável, projeto e duração), sem duplicar
+async function proximaOcorrencia(t, autor) {
+  if (!t.recorrencia) return null;
+  const origem = t.recorrencia_de || t.id;
+  const ja = await pool.query("SELECT id FROM tarefas WHERE recorrencia_de=$1 AND status <> 'concluida' AND id <> $2", [origem, t.id]);
+  if (ja.rows[0]) return null;
+  const ini = fmtData(t.inicio), fim = fmtData(t.prazo), base = fim || ini;
+  const prazo = proximaData(base, t.recorrencia);
+  const inicio = ini && fim ? somaDias(prazo, -difDias(ini, fim)) : (ini && !fim ? prazo : null);
+  const novoPrazo = fim || !ini ? prazo : null;
+  const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, recorrencia, recorrencia_de)
+    VALUES ($1,$2,$3,$4,$5,$6,'afazer',$7,$8,$9,$10) RETURNING id`, [t.titulo, t.descricao, t.responsavel, t.criado_por, t.projeto_id, t.prioridade, inicio, novoPrazo, t.recorrencia, origem]);
+  const nid = r.rows[0].id;
+  await registraEvento(nid, autor, `criou esta ocorrência da tarefa recorrente (${RECORRENCIAS[t.recorrencia].toLowerCase()}), prazo: ${brData(novoPrazo || inicio)}`);
+  await registraEvento(t.id, autor, `próxima ocorrência criada para ${brData(novoPrazo || inicio)}`);
+  agenda.tarefa(nid);
+  return nid;
 }
 
 app.post('/api/tarefas', auth, express.json({ limit: '50kb' }), async (req, res) => {
   const v = await validaTarefa(req.body || {}, false); if (v.erro) return res.status(400).json(v);
-  const d = { descricao: null, responsavel: null, projeto_id: null, prioridade: 2, status: 'afazer', inicio: null, prazo: null, ...v.dados };
+  const d = { descricao: null, responsavel: null, projeto_id: null, prioridade: 2, status: 'afazer', inicio: null, prazo: null, recorrencia: null, ...v.dados };
   if (d.inicio && d.prazo && d.prazo < d.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
-  const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, concluida_em)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-    [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.inicio, d.prazo, d.status === 'concluida' ? new Date() : null]);
+  const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, concluida_em, recorrencia)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.inicio, d.prazo, d.status === 'concluida' ? new Date() : null, d.recorrencia]);
   const t = r.rows[0];
-  await registraEvento(t.id, req.email, `criou a tarefa (prazo: ${brData(d.prazo)})`);
+  await registraEvento(t.id, req.email, `criou a tarefa (prazo: ${brData(d.prazo)}${d.recorrencia ? ', repete: ' + RECORRENCIAS[d.recorrencia].toLowerCase() : ''})`);
   agenda.tarefa(t.id);
   res.json(tarefaOut(t, 0));
 });
@@ -350,18 +454,32 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
   if (!t) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
   const v = await validaTarefa(req.body || {}, true); if (v.erro) return res.status(400).json(v);
   const d = v.dados;
+  // quem aprova: quem criou a tarefa ou um gestor. Quem só é responsável leva a tarefa até "Aguardando aprovação".
   const total = req.gestor || t.criado_por === req.email;
+  let enviadaParaAprovacao = false;
   if (!total) {
     const soStatus = Object.keys(d).every(k => k === 'status');
     if (!(t.responsavel === req.email && soStatus)) return res.status(403).json({ erro: 'Você só pode mudar a situação das tarefas sob sua responsabilidade. Prazo e responsável ficam com quem criou a tarefa ou com o gestor.' });
+    if (d.status === 'concluida') { d.status = 'aguardando'; enviadaParaAprovacao = true; }
+    if (t.status === 'concluida' && d.status && d.status !== 'concluida') return res.status(403).json({ erro: 'Esta tarefa já foi aprovada. Para reabrir, fale com quem criou a tarefa ou com o gestor.' });
   }
-  const n = { titulo: t.titulo, descricao: t.descricao, responsavel: t.responsavel, projeto_id: t.projeto_id, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo), ...d };
+  const n = { titulo: t.titulo, descricao: t.descricao, responsavel: t.responsavel, projeto_id: t.projeto_id, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo), recorrencia: t.recorrencia || null, ...d };
   if (n.inicio && n.prazo && n.prazo < n.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
   const concluida_em = n.status === 'concluida' ? (t.status === 'concluida' ? t.concluida_em : new Date()) : null;
-  await pool.query(`UPDATE tarefas SET titulo=$2, descricao=$3, responsavel=$4, projeto_id=$5, prioridade=$6, status=$7, inicio=$8, prazo=$9, concluida_em=$10, atualizado_em=now() WHERE id=$1`,
-    [id, n.titulo, n.descricao, n.responsavel, n.projeto_id, n.prioridade, n.status, n.inicio, n.prazo, concluida_em]);
+  await pool.query(`UPDATE tarefas SET titulo=$2, descricao=$3, responsavel=$4, projeto_id=$5, prioridade=$6, status=$7, inicio=$8, prazo=$9, concluida_em=$10, recorrencia=$11, atualizado_em=now() WHERE id=$1`,
+    [id, n.titulo, n.descricao, n.responsavel, n.projeto_id, n.prioridade, n.status, n.inicio, n.prazo, concluida_em, n.recorrencia]);
   // histórico do que importa para o controle
-  if (n.status !== t.status) await registraEvento(id, req.email, `mudou a situação de "${STATUS_NOME[t.status]}" para "${STATUS_NOME[n.status]}"`);
+  if (n.status !== t.status) {
+    const outro = t.responsavel && t.responsavel !== req.email;
+    const txtEv = t.status === 'aguardando' && n.status === 'concluida' && outro ? 'aprovou a tarefa ✅'
+      : t.status === 'aguardando' && ['afazer', 'andamento'].includes(n.status) && outro ? `devolveu a tarefa para ajustes (${STATUS_NOME[n.status]})`
+      : n.status === 'aguardando' ? 'terminou e enviou para aprovação'
+      : `mudou a situação de "${STATUS_NOME[t.status]}" para "${STATUS_NOME[n.status]}"`;
+    await registraEvento(id, req.email, txtEv);
+  }
+  if ((n.recorrencia || null) !== (t.recorrencia || null)) await registraEvento(id, req.email, n.recorrencia ? `passou a repetir: ${RECORRENCIAS[n.recorrencia].toLowerCase()}` : 'deixou de repetir');
+  let proxima = null;
+  if (n.status === 'concluida' && t.status !== 'concluida') proxima = await proximaOcorrencia({ ...t, ...n, id }, req.email);
   if (n.prazo !== fmtData(t.prazo)) await registraEvento(id, req.email, `mudou o prazo de ${brData(fmtData(t.prazo))} para ${brData(n.prazo)}`);
   if (n.responsavel !== t.responsavel) {
     const nm = async e => { if (!e) return 'ninguém'; const r = await pool.query('SELECT nome FROM pessoas WHERE email=$1', [e]); return (r.rows[0] && r.rows[0].nome) || e; };
@@ -370,7 +488,7 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
   if (n.prioridade !== t.prioridade) await registraEvento(id, req.email, `mudou a prioridade para ${PRIORIDADE_NOME[n.prioridade]}`);
   agenda.tarefa(id);
   const r2 = await pool.query('SELECT * FROM tarefas WHERE id=$1', [id]);
-  res.json(tarefaOut(r2.rows[0]));
+  res.json({ ...tarefaOut(r2.rows[0]), enviadaParaAprovacao, proximaOcorrencia: proxima });
 });
 
 app.delete('/api/tarefas/:id', auth, async (req, res) => {
@@ -409,13 +527,12 @@ app.delete('/api/comentarios/:id', auth, async (req, res) => {
 // A IA devolve uma PROPOSTA; aqui ela é conferida (pessoas, projetos e datas têm de existir e ser válidos)
 // e volta para a tela, onde a pessoa revisa e cria pelas rotas normais.
 const usoNarrar = new Map(); // limite simples por pessoa: 30 narrações por hora
-const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 const EXEMPLO_DEV = h => ({ resumo: 'Exemplo de teste (sem chave da IA neste computador): 2 tarefas para um projeto novo.',
   projetos_novos: [{ ref: 'p1', nome: 'Projeto de exemplo', descricao: 'Criado no modo de teste', responsavel: null, inicio: h, fim: null }],
   tarefas: [
     { titulo: 'Primeira tarefa do exemplo', descricao: '', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: h, prazo: h, prioridade: 2 },
-    { titulo: 'Segunda tarefa do exemplo', descricao: 'Detalhe de exemplo', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: null, prazo: null, prioridade: 3 },
-  ], duvidas: ['Este é um exemplo fixo: configure ANTHROPIC_API_KEY para a IA entender a narração de verdade.'] });
+    { titulo: 'Segunda tarefa do exemplo', descricao: 'Detalhe de exemplo', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: null, prazo: null, prioridade: 3, recorrencia: 'semanal' },
+  ], lembretes: [{ texto: 'Lembrete de exemplo: ligar para o fornecedor', data: h, recorrencia: null }], duvidas: ['Este é um exemplo fixo: configure ANTHROPIC_API_KEY para a IA entender a narração de verdade.'] });
 
 app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) => {
   const texto = txt(req.body && req.body.texto, 8000);
@@ -470,10 +587,11 @@ app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) 
     const pid = Number.isInteger(t.projeto_id) && idsProj.has(t.projeto_id) ? t.projeto_id : null;
     const ref = !pid && t.projeto_novo_ref && refs.has(t.projeto_novo_ref) ? t.projeto_novo_ref : null;
     return { titulo: txt(t.titulo, 160), descricao: txt(t.descricao, 5000) || '', responsavel: pessoaOk(t.responsavel), projetoId: pid, projetoNovoRef: ref,
-      inicio, prazo, prioridade: [1, 2, 3, 4].includes(t.prioridade) ? t.prioridade : 2 };
+      inicio, prazo, prioridade: [1, 2, 3, 4].includes(t.prioridade) ? t.prioridade : 2, recorrencia: RECORRENCIAS[t.recorrencia] ? t.recorrencia : null };
   }).filter(t => t.titulo);
   const duvidas = (Array.isArray(r.duvidas) ? r.duvidas : []).map(d => txt(d, 300)).filter(Boolean).slice(0, 10);
-  res.json({ resumo: txt(r.resumo, 400) || '', projetosNovos, tarefas, duvidas });
+  const lembretes = (Array.isArray(r.lembretes) ? r.lembretes : []).slice(0, 30).map(l => ({ texto: txt(l.texto, 300), data: data(l.data), recorrencia: RECORRENCIAS[l.recorrencia] ? l.recorrencia : null })).filter(l => l.texto);
+  res.json({ resumo: txt(r.resumo, 400) || '', projetosNovos, tarefas, lembretes, duvidas });
 });
 
 // tratador de erro: responde em vez de derrubar o processo
