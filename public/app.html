@@ -865,6 +865,37 @@ const MIC_ERROS = {
   'network': 'O reconhecimento de voz do navegador não conseguiu conectar (ele usa a internet). Tente de novo, use o Chrome ou o Edge, ou dite com <b>Win + H</b>.',
   'language-not-supported': 'O navegador não reconhece português. Dite com <b>Win + H</b>.',
 };
+// o reconhecimento de voz não abriu em 5 s: testa o microfone direto para dizer o motivo certo
+async function diagnosticaMic(r) {
+  micStatus('O microfone não abriu pelo reconhecimento de voz. Testando o microfone…', 'aviso');
+  const winH = ' Enquanto isso, dite com <b>Win + H</b>: clique no campo de texto e aperte as duas teclas.';
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { micStatus('Este navegador não deixa testar o microfone.' + winH, 'erro'); paraMic(); return; }
+  let s;
+  try { s = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) {
+    if (rec !== r) return;
+    const msg = {
+      NotAllowedError: 'O <b>Windows</b> ou o navegador está bloqueando o microfone. No Windows, abra <b>Configurações → Privacidade e segurança → Microfone</b> e ligue <b>Acesso ao microfone</b> e <b>Permitir que aplicativos da área de trabalho acessem o microfone</b>. Depois feche e abra o navegador.',
+      NotFoundError: 'Nenhum microfone foi encontrado. Confira se ele está conectado e escolhido em <b>Configurações → Sistema → Som → Entrada</b> do Windows.',
+      NotReadableError: 'O microfone está ocupado por outro programa (Teams, Zoom, Meet, WhatsApp…). Feche esse programa ou a chamada e tente de novo.',
+    }[e.name] || `O microfone não pôde ser aberto (${esc(e.name)}).`;
+    micStatus(msg + winH, 'erro'); paraMic(); return;
+  }
+  // o microfone funciona: mede se chega som
+  let nivel = 0;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)(), an = ctx.createAnalyser(), buf = new Uint8Array(an.fftSize);
+    ctx.createMediaStreamSource(s).connect(an);
+    const fim = Date.now() + 1500;
+    while (Date.now() < fim) { an.getByteTimeDomainData(buf); for (const v of buf) nivel = Math.max(nivel, Math.abs(v - 128)); await new Promise(x => setTimeout(x, 100)); }
+    ctx.close();
+  } catch {}
+  s.getTracks().forEach(t => t.stop());
+  if (rec !== r) return;
+  const nome = (s.getAudioTracks()[0] || {}).label || 'microfone';
+  micStatus(`O microfone funciona (<b>${esc(nome)}</b>${nivel < 2 ? ', mas não chegou som: confira se está mudo' : ''}), mas o <b>serviço de voz do navegador</b> não respondeu. Isso acontece em redes de empresa que bloqueiam o serviço de voz do Google e em navegadores como Brave e Opera. Tente no <b>Google Chrome</b> ou no <b>Microsoft Edge</b>.` + winH, 'erro');
+  paraMic();
+}
 function janelaNarrar(textoInicial) {
   const foco = S.vista === 'projetos' && S.projetoSel ? S.projetoSel : '';
   const opt = (v, txt, sel) => `<option value="${esc(v)}" ${String(sel) === String(v) ? 'selected' : ''}>${esc(txt)}</option>`;
@@ -911,7 +942,7 @@ function janelaNarrar(textoInicial) {
       inicio = Date.now(); try { r.start(); } catch { paraMic(); }
     };
     // se em 5 segundos o microfone nem abriu, avisa (permissão pendente ou bloqueada sem erro)
-    paraMic.vigia = setTimeout(() => { if (rec === r && !abriu) micStatus('O microfone ainda não abriu. Se apareceu um pedido de permissão no alto da tela, clique em <b>Permitir</b>. Se não, clique no cadeado 🔒 ao lado do endereço e permita o microfone.', 'aviso'); }, 5000);
+    paraMic.vigia = setTimeout(() => { if (rec === r && !abriu) diagnosticaMic(r); }, 5000);
     try { r.start(); mic.classList.add('on'); mic.lastChild.textContent = ' Parar'; micStatus('Abrindo o microfone…'); }
     catch (er) { micStatus(`Não deu para iniciar o microfone (${esc(er.message)}). Dite com <b>Win + H</b>.`, 'erro'); paraMic(); }
   };
