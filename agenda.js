@@ -157,9 +157,25 @@ module.exports = function criaAgenda({ pool, clientId, clientSecret, segredo, do
     const n = r ? (await q('SELECT count(*)::int AS n FROM eventos_agenda WHERE email=$1', [email]))[0].n : 0;
     return { disponivel, conectado: !!r && !r.erro, erro: r ? r.erro : null, eventos: n };
   }
+  // compromissos da agenda principal (reuniões etc.) entre duas datas, para o Início.
+  // Ficam de fora os eventos que o próprio sistema criou (as tarefas já aparecem como tarefas) e os recusados pela pessoa.
+  async function eventos(email, de, ate) {
+    const q = new URLSearchParams({ timeMin: `${de}T00:00:00-03:00`, timeMax: `${ate}T23:59:59-03:00`, singleEvents: 'true', orderBy: 'startTime', maxResults: '100', timeZone: 'America/Sao_Paulo' });
+    const r = await cal(email, 'GET', `/calendars/primary/events?${q}`);
+    if (r.semConta || r.erro || r.status !== 200 || !r.json) return null;
+    return (r.json.items || []).filter(e => e.status !== 'cancelled'
+      && !(e.extendedProperties && e.extendedProperties.private && e.extendedProperties.private.tarefaDarmand)
+      && !(e.attendees || []).some(a => a.self && a.responseStatus === 'declined'))
+      .map(e => {
+        const diaInteiro = !!(e.start && e.start.date);
+        const meet = e.hangoutLink || ((e.conferenceData && e.conferenceData.entryPoints || []).find(p => p.entryPointType === 'video') || {}).uri || null;
+        return { id: e.id, titulo: e.summary || '(sem título)', inicio: diaInteiro ? e.start.date : e.start.dateTime, fim: diaInteiro ? e.end.date : e.end.dateTime,
+          diaInteiro, local: e.location || null, link: e.htmlLink || null, meet };
+      });
+  }
   const conectados = async () => new Set((await q('SELECT email FROM google_contas WHERE erro IS NULL')).map(r => r.email));
   // só para o modo de teste local: conecta sem passar pelo Google
   const conectarFalso = async email => { await pool.query('DELETE FROM google_contas WHERE email=$1', [email]); await pool.query('INSERT INTO google_contas (email, token) VALUES ($1,$2)', [email, cifra('falso')]); };
 
-  return { disponivel, init, urlConectar, retorno, tarefa, sincronizarPessoa, desconectar, status, conectados, conectarFalso };
+  return { disponivel, init, urlConectar, retorno, tarefa, sincronizarPessoa, desconectar, status, conectados, conectarFalso, eventos };
 };

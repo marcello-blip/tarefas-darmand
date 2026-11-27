@@ -260,6 +260,45 @@ button.kpi:hover{border-color:var(--muted)}
 .recolhe[open]>summary::before{content:'▾'}
 .recolhe>summary .n{color:var(--muted);font-weight:500}
 .recolhe[open]>summary{margin-bottom:8px}
+/* início "meu dia" */
+.dia-topo{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start;margin-bottom:16px}
+.proximo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:14px}
+.proximo .btn{margin-left:auto}
+.alerta-atraso{margin-bottom:16px}
+.alerta-atraso>summary{cursor:pointer;list-style:none;padding:10px 14px;border-radius:12px;background:var(--red-soft);color:var(--red);font-size:14px;display:flex;gap:6px;align-items:center}
+.alerta-atraso>summary::-webkit-details-marker{display:none}
+.alerta-atraso>summary .st{margin-left:auto;color:var(--red);text-decoration:underline}
+.alerta-atraso[open]>summary .st{display:none}
+.alerta-atraso[open]>summary{margin-bottom:8px}
+.dia-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:20px;align-items:start}
+.dia-grid>*{min-width:0}
+.dia-lado{display:flex;flex-direction:column;gap:16px}
+.hoje{border-top:3px solid var(--brand);min-height:180px}
+.ag-sec+.ag-sec{margin-top:14px}
+.ag-st{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:2px 0 6px}
+.ag-item{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
+.ag-sec .ag-item:first-of-type{border-top:0}
+.ag-item.tarefa{cursor:pointer}
+.ag-item.tarefa:hover,.ag-item.lembrete:hover{background:var(--surface2)}
+.ag-hora{flex:none;width:62px;font-variant-numeric:tabular-nums;font-weight:600;color:var(--blue);font-size:13.5px}
+.ag-tit{flex:1;min-width:0}
+.ag-tit b{font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis}
+.ag-tit small{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.ag-item.passou{opacity:.5}
+.ag-item.agora{background:var(--blue-soft);border-radius:10px;padding:10px 8px}
+.ag-ja{color:var(--blue)!important;font-weight:600}
+.ag-abre{color:var(--muted);text-decoration:none;font-size:16px;padding:0 4px}
+.ag-item .chk{flex:none}
+.ag-conectar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
+.ag-conectar span{flex:1;min-width:180px}
+.pd-dia{padding:8px 0;border-top:1px solid var(--line)}
+.pd-dia:first-of-type{border-top:0;padding-top:0}
+.pd-rot{font-size:12.5px;font-weight:600;margin-bottom:4px}
+.pd-it{font-size:13px;display:flex;gap:8px;padding:2px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pd-it[data-id]{cursor:pointer}.pd-it[data-id]:hover{color:var(--brand)}
+.pd-h{flex:none;width:52px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.pd-mais{font-size:12px;color:var(--muted);padding-left:60px}
+@media (max-width:1000px){.dia-topo{grid-template-columns:1fr}.dia-grid{grid-template-columns:1fr}}
 .membros-lista{display:flex;flex-wrap:wrap;gap:8px}
 .membro{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--surface2)}
 .membro .mn{font-size:13.5px;font-weight:500}
@@ -459,8 +498,9 @@ function toast(msg, erro) {
   document.body.appendChild(t); setTimeout(() => t.remove(), erro ? 5000 : 2500);
 }
 async function carrega() {
-  const [me, pessoas, projetos, tarefas, lembretes] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas'), api('GET', '/api/lembretes')]);
-  Object.assign(S, { me, pessoas, projetos, tarefas, lembretes });
+  const [me, pessoas, projetos, tarefas, lembretes, agendaEv] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas'), api('GET', '/api/lembretes'),
+    api('GET', '/api/agenda/eventos?dias=7').catch(() => ({ conectado: false, eventos: [] }))]);
+  Object.assign(S, { me, pessoas, projetos, tarefas, lembretes, agendaEv });
   // como cada pessoa prefere ver as tarefas (salvo na conta dela)
   if (!S.modo) S.modo = (me.prefs && me.prefs.visao) || 'lista';
   if (!S.modoInicio) S.modoInicio = (me.prefs && me.prefs.visaoInicio) || 'lista';
@@ -755,92 +795,127 @@ async function capturaRapida(tipo) {
 }
 const addLembrete = () => capturaRapida('lembrete');
 
+// ---------------- Início: "Meu dia" (compromissos da agenda + tarefas + lembretes) ----------------
+const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const diaDoEvento = e => e.diaInteiro ? e.inicio : ymd(new Date(e.inicio));
+function rotuloDia(s) {
+  const h = hoje(); if (s === h) return 'Hoje'; if (s === somaDias(h, 1)) return 'Amanhã';
+  const t = new Date(s + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '').replace(' de ', ' ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function itemEvento(e) {
+  const agora = Date.now(), ini = e.diaInteiro ? null : new Date(e.inicio).getTime(), fim = e.diaInteiro ? null : new Date(e.fim).getTime();
+  const acontecendo = ini && ini <= agora && agora < fim, passou = fim && fim <= agora;
+  return `<div class="ag-item ${passou ? 'passou' : ''} ${acontecendo ? 'agora' : ''}">
+    <span class="ag-hora">${e.diaInteiro ? 'dia todo' : hhmm(e.inicio)}</span>
+    <span class="ag-tit"><b>${esc(e.titulo)}</b>${e.local ? `<small>📍 ${esc(e.local)}</small>` : ''}${acontecendo ? '<small class="ag-ja">● acontecendo agora</small>' : ''}</span>
+    ${e.meet && !passou ? `<a class="btn peq ${acontecendo ? 'prim' : ''}" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a>` : e.link ? `<a class="ag-abre" href="${esc(e.link)}" target="_blank" rel="noopener" title="Abrir no Google Agenda">↗</a>` : ''}
+  </div>`;
+}
+function itemTarefa(t) {
+  return `<div class="ag-item tarefa" data-id="${t.id}">
+    <button class="chk" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="Concluir">${''}</button>
+    <span class="ag-tit"><b>${esc(t.titulo)}</b><small>${t.projetoId ? chipProjeto(t.projetoId) : 'Tarefa'}${t.status === 'aguardando' ? ' · ⏳ aguardando aprovação' : t.status === 'andamento' ? ' · fazendo' : ''}${t.recorrencia ? ' · 🔁' : ''}</small></span>
+    ${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}
+  </div>`;
+}
+function itemLembrete(l) {
+  return `<div class="ag-item lembrete">
+    <button class="chk" data-lem-chk="${l.id}" title="${l.recorrencia ? 'Feito (volta na próxima vez)' : 'Feito'}"></button>
+    <span class="ag-tit"><b>${esc(l.texto)}</b><small>📌 Lembrete${l.recorrencia ? ' · 🔁 ' + esc(RECORR_NOME[l.recorrencia]) : ''}</small></span>
+    <button class="lem-x" data-lem-apaga="${l.id}" title="Apagar">×</button>
+  </div>`;
+}
+
 function vInicio() {
-  const abertas = S.tarefas.filter(t => t.status !== 'concluida');
-  const atras = abertas.filter(t => situacao(t) === 'atrasada'), hj = abertas.filter(t => situacao(t) === 'hoje'), sem = abertas.filter(t => situacao(t) === 'semana');
-  const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0);
-  const conclMes = S.tarefas.filter(t => t.status === 'concluida' && t.concluidaEm >= ini.getTime());
-  const comPrazo = conclMes.filter(t => t.prazo), okMes = comPrazo.filter(t => ymd(new Date(t.concluidaEm)) <= t.prazo).length;
-  const minhas = abertas.filter(t => t.responsavel === S.me.email).sort(ordem);
-  const minhasQuadro = S.tarefas.filter(t => t.responsavel === S.me.email).sort(ordem);
-  const criei = abertas.filter(t => t.criadoPor === S.me.email && t.responsavel !== S.me.email && t.status !== 'aguardando').sort(ordem);
-  const aprovar = S.tarefas.filter(t => t.status === 'aguardando' && podeAprovar(t) && t.responsavel !== S.me.email).sort(ordem);
-  const h = new Date().getHours(), saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  // resumo do dia, como um assistente pessoal
-  const hj0 = hoje(), lemAbertos = S.lembretes.filter(l => !l.feito), lemHoje = lemAbertos.filter(l => l.data && l.data <= hj0);
-  const minhasHoje = minhas.filter(t => t.prazo === hj0).length, minhasAtras = minhas.filter(t => situacao(t) === 'atrasada').length;
+  const h = hoje(), eu = S.me.email, ag = S.agendaEv || { conectado: false, eventos: [] };
+  const minhas = S.tarefas.filter(t => t.responsavel === eu && t.status !== 'concluida');
+  const atrasadas = minhas.filter(t => situacao(t) === 'atrasada').sort(ordem);
+  const tarefasHoje = minhas.filter(t => t.prazo === h || (t.inicio === h && t.prazo !== h && situacao(t) !== 'atrasada')).sort((a, b) => b.prioridade - a.prioridade);
+  const lemAb = S.lembretes.filter(l => !l.feito), lemHoje = lemAb.filter(l => l.data && l.data <= h), lemSemData = lemAb.filter(l => !l.data);
+  const evs = (ag.eventos || []).slice().sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+  const evHoje = evs.filter(e => diaDoEvento(e) === h).sort((a, b) => (b.diaInteiro - a.diaInteiro) || String(a.inicio).localeCompare(String(b.inicio)));
+  const aprovar = S.tarefas.filter(t => t.status === 'aguardando' && podeAprovar(t) && t.responsavel !== eu).sort(ordem);
+  const criei = S.tarefas.filter(t => t.criadoPor === eu && t.responsavel !== eu && t.status !== 'concluida').sort(ordem);
+  // resumo do dia
+  const hr = new Date().getHours(), saud = hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite';
   const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
   const partes = [];
-  if (minhasHoje) partes.push(`<b>${plural(minhasHoje, 'tarefa', 'tarefas')}</b> para hoje`);
-  if (minhasAtras) partes.push(`<b style="color:var(--red)">${plural(minhasAtras, 'atrasada', 'atrasadas')}</b>`);
-  if (lemHoje.length) partes.push(`<b>${plural(lemHoje.length, 'lembrete', 'lembretes')}</b> do dia`);
-  if (aprovar.length) partes.push(`<b>${plural(aprovar.length, 'tarefa esperando', 'tarefas esperando')}</b> sua aprovação`);
-  const resumo = partes.length ? `Hoje você tem ${partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes.slice(-1) : partes[0]}.` : (minhas.length ? `Nada vence hoje. Você tem ${plural(minhas.length, 'tarefa aberta', 'tarefas abertas')} no total.` : 'Tudo em dia por aqui. 🎉');
-  const nomeSo = primeiroNome(S.me.email);
-  const ag = S.me.agenda || {};
-  const avisoAg = ag.disponivel && (ag.erro || (!ag.conectado && localGet('agendaDispensada') !== '1'))
-    ? `<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid ${ag.erro ? 'var(--red)' : 'var(--blue)'}">
-        <span style="font-size:22px">📅</span>
-        <div style="flex:1;min-width:200px"><b>${ag.erro ? 'Seu Google Agenda desconectou' : 'Veja suas tarefas no Google Agenda'}</b><div class="st" style="font-size:13px">${ag.erro ? esc(ag.erro) : 'Conecte uma vez e as tarefas com você aparecem na sua agenda principal, do início ao prazo, sempre atualizadas.'}</div></div>
-        <a class="btn prim" href="/api/google/conectar" style="text-decoration:none">${ag.erro ? 'Reconectar' : 'Conectar'}</a>
-        ${ag.erro ? '' : '<button class="btn" data-dispensa-agenda>Agora não</button>'}
-      </div>` : '';
-  // "Meu dia": minhas tarefas separadas por urgência
-  const s7 = somaDias(hj0, 7);
-  const grupos = [
-    ['🔴 Atrasadas', minhas.filter(t => situacao(t) === 'atrasada')],
-    ['🟠 Hoje', minhas.filter(t => t.prazo === hj0)],
-    ['🔵 Próximos 7 dias', minhas.filter(t => t.prazo > hj0 && t.prazo <= s7)],
-    ['⚪ Depois', minhas.filter(t => t.prazo > s7)],
-    ['Sem prazo', minhas.filter(t => !t.prazo)],
-  ].filter(g => g[1].length);
-  const meuDia = S.modoInicio === 'quadro' ? quadroHtml(minhasQuadro)
-    : minhas.length ? grupos.map(([n, ts]) => `<div class="dia-grupo"><div class="dia-gt">${n} <span class="n">${ts.length}</span></div><div class="card lista">${ts.map(linha).join('')}</div></div>`).join('')
-    : '<div class="card vazio">Nenhuma tarefa aberta com você. 🎉<br><span class="dica">Anote algo na caixa lá em cima ou use o 🎙 Narrar.</span></div>';
-  const chip = (v, rot, cor, ir) => `<button class="chip-kpi ${cor} ${v ? '' : 'zero'}" ${ir}><b>${v}</b><span>${rot}</span></button>`;
+  const reunioes = evHoje.filter(e => !e.diaInteiro);
+  if (reunioes.length) partes.push(plural(reunioes.length, 'compromisso', 'compromissos'));
+  if (tarefasHoje.length) partes.push(plural(tarefasHoje.length, 'tarefa', 'tarefas'));
+  if (lemHoje.length) partes.push(plural(lemHoje.length, 'lembrete', 'lembretes'));
+  const lista = partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes.slice(-1) : partes[0];
+  const prox = reunioes.find(e => new Date(e.fim).getTime() > Date.now());
+  let proxTxt = '';
+  if (prox) {
+    const min = Math.round((new Date(prox.inicio).getTime() - Date.now()) / 60000);
+    proxTxt = `<div class="proximo">${min <= 0 ? '● Agora' : '⏰ Próximo'}: <b>${hhmm(prox.inicio)} · ${esc(prox.titulo)}</b>${min > 0 ? ` <span class="st">(${min < 60 ? `em ${min} min` : `em ${Math.floor(min / 60)}h${min % 60 ? pad(min % 60) : ''}`})</span>` : ''}
+      ${prox.meet ? `<a class="btn peq prim" href="${esc(prox.meet)}" target="_blank" rel="noopener">Entrar na reunião</a>` : ''}</div>`;
+  }
+  const resumo = partes.length ? `Hoje você tem ${lista}.` : 'Nada marcado para hoje.';
+  // aviso do Google Agenda (conectar) só quando faz sentido
+  const ga = S.me.agenda || {};
+  const conectarAgenda = ga.disponivel && !ag.conectado
+    ? `<div class="ag-conectar">📅 <span>Conecte seu Google Agenda para ver suas reuniões aqui, junto com as tarefas.</span><a class="btn peq prim" href="/api/google/conectar">Conectar</a></div>` : '';
+  // hoje
+  const blocoHoje = `
+    ${evHoje.length ? `<div class="ag-sec"><div class="ag-st">Compromissos</div>${evHoje.map(itemEvento).join('')}</div>` : ''}
+    ${tarefasHoje.length || lemHoje.length ? `<div class="ag-sec"><div class="ag-st">Para fazer hoje</div>${tarefasHoje.map(itemTarefa).join('')}${lemHoje.sort((a, b) => a.data.localeCompare(b.data)).map(itemLembrete).join('')}</div>` : ''}
+    ${!evHoje.length && !tarefasHoje.length && !lemHoje.length ? `<div class="vazio-p" style="padding:14px 4px">Nada para hoje. ${minhas.length ? 'Veja o que vem pela frente ao lado.' : 'Anote algo na caixa acima ou use o 🎙.'}</div>` : ''}
+    ${conectarAgenda}`;
+  // próximos dias (amanhã + 5)
+  const dias = [];
+  for (let i = 1; i <= 6; i++) {
+    const d = somaDias(h, i);
+    const its = [
+      ...evs.filter(e => diaDoEvento(e) === d).map(e => ({ o: e.diaInteiro ? '00' : hhmm(e.inicio), html: `<span class="pd-h">${e.diaInteiro ? 'dia todo' : hhmm(e.inicio)}</span>${esc(e.titulo)}` })),
+      ...minhas.filter(t => t.prazo === d).map(t => ({ o: '99', id: t.id, html: `<span class="pd-h">tarefa</span>${esc(t.titulo)}` })),
+      ...lemAb.filter(l => l.data === d).map(l => ({ o: '98', html: `<span class="pd-h">📌</span>${esc(l.texto)}` })),
+    ].sort((a, b) => a.o.localeCompare(b.o));
+    if (its.length) dias.push(`<div class="pd-dia"><div class="pd-rot">${rotuloDia(d)}</div>${its.slice(0, 4).map(x => `<div class="pd-it" ${x.id ? `data-id="${x.id}"` : ''}>${x.html}</div>`).join('')}${its.length > 4 ? `<div class="pd-mais">+${its.length - 4}</div>` : ''}</div>`);
+  }
+  const recolhe = (chave, titulo, n, corpo, abertoPadrao) => n ? `<details class="recolhe" data-recolhe="${chave}" ${(localGet('abre.' + chave) || (abertoPadrao ? '1' : '0')) === '1' ? 'open' : ''}><summary>${titulo} <span class="n">${n}</span></summary>${corpo}</details>` : '';
   const tipo = localGet('qTipo') === 'lembrete' ? 'lembrete' : 'tarefa';
-  const recolhe = (chave, titulo, n, corpo) => n ? `<details class="recolhe" data-recolhe="${chave}" ${localGet('abre.' + chave) === '1' ? 'open' : ''}><summary>${titulo} <span class="n">${n}</span></summary>${corpo}</details>` : '';
-  return `${avisoAg}
-    <div class="topo-inicio">
-      <div class="saudacao"><h2>${saud}, ${esc(nomeSo)}! 👋</h2><p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${resumo}</p></div>
+  return `
+    <div class="dia-topo">
+      <div class="saudacao">
+        <h2>${saud}, ${esc(primeiroNome(eu))}! 👋</h2>
+        <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${resumo}</p>
+        ${proxTxt}
+      </div>
       <div class="captura card">
-        <input id="qTxt" maxlength="300" placeholder="O que você precisa fazer? Escreva e aperte Enter…" autocomplete="off">
+        <input id="qTxt" maxlength="300" placeholder="Anotar algo… (Enter)" autocomplete="off">
         <div class="captura-op">
           <input type="date" id="qData" title="Data (opcional)">
           <select id="qRec" title="Repetir">${RECORR.map(([k, n]) => `<option value="${k}">${k ? '🔁 ' + n : 'Não repete'}</option>`).join('')}</select>
           <span class="captura-bt">
-            <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você (aparece para a equipe)">+ Tarefa</button>
-            <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota no seu mural (só você vê)">📌 Lembrete</button>
+            <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você">+ Tarefa</button>
+            <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota um lembrete (só você vê)">📌 Lembrete</button>
             <button class="btn" data-narrar title="Fale ou escreva várias coisas e a IA organiza">🎙</button>
           </span>
         </div>
       </div>
     </div>
-    <div class="chips">
-      ${chip(minhasAtras, 'atrasadas', 'vermelho', 'data-ir="atrasadas" data-eu')}
-      ${chip(minhasHoje, 'para hoje', 'ambar', 'data-ir="hoje" data-eu')}
-      ${chip(minhas.filter(t => t.prazo > hj0 && t.prazo <= s7).length, 'próximos 7 dias', 'azul', 'data-ir="semana" data-eu')}
-      ${chip(aprovar.length, 'para aprovar', 'roxo', 'data-rola="aprovar"')}
-      ${chip(lemHoje.length, 'lembretes hoje', 'verde', 'data-rola="mural"')}
-      ${S.me.gestor ? chip(atras.length, 'atrasadas nos seus projetos', 'vermelho', 'data-ir="atrasadas"') : ''}
-    </div>
-    <div class="inicio-grid">
-      <div class="col-principal">
-        <div class="bloco-cab"><h3>Meu dia <span class="n">${minhas.length} ${minhas.length === 1 ? 'tarefa' : 'tarefas'}</span></h3>${alterna(S.modoInicio, 'data-modo-inicio')}</div>
-        ${meuDia}
-        <div class="recolhidos">
-          ${recolhe('passei', '👥 Que eu passei para outras pessoas', criei.length, listaHtml(criei, ''))}
-          ${S.me.gestor ? recolhe('equipe', '🚨 Atrasadas da equipe', atras.length, listaHtml(atras.slice().sort(ordem), '')) : ''}
-        </div>
-      </div>
-      <aside class="col-lado">
+    ${atrasadas.length ? `<details class="alerta-atraso" data-recolhe="atrasadas" ${localGet('abre.atrasadas') === '1' ? 'open' : ''}><summary>⚠️ Você tem <b>${plural(atrasadas.length, 'tarefa atrasada', 'tarefas atrasadas')}</b> <span class="st">ver</span></summary><div class="card lista">${atrasadas.map(linha).join('')}</div></details>` : ''}
+    <div class="dia-grid">
+      <section class="card bloco hoje">
+        <div class="bloco-cab"><h3>📅 Hoje</h3>${ag.conectado ? `<button class="btn peq" data-atualiza-agenda title="Buscar de novo no Google Agenda">↻</button>` : ''}</div>
+        ${ag.erro ? `<div class="aviso">${esc(ag.erro)}</div>` : ''}
+        ${blocoHoje}
+      </section>
+      <aside class="dia-lado">
         ${aprovar.length ? `<div class="card bloco" id="b-aprovar"><div class="bloco-cab"><h3>⏳ Para aprovar <span class="n">${aprovar.length}</span></h3></div>${aprovar.map(t => `
-          <div class="aprov-item" data-id="${t.id}">
-            <div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(primeiroNome(t.responsavel))} terminou</small></div>
-            <div class="aprov-bt"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>
-          </div>`).join('')}</div>` : ''}
-        <div class="card bloco mural" id="b-mural">${muralHtml()}</div>
+          <div class="aprov-item" data-id="${t.id}"><div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(primeiroNome(t.responsavel))} terminou</small></div>
+          <div class="aprov-bt"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div></div>`).join('')}</div>` : ''}
+        <div class="card bloco"><div class="bloco-cab"><h3>🗓 Próximos dias</h3><button class="btn peq" data-ir-cronograma title="Ver tudo no cronograma">ver tudo</button></div>
+          ${dias.length ? dias.join('') : '<div class="vazio-p">Nada marcado para os próximos dias.</div>'}</div>
       </aside>
+    </div>
+    <div class="recolhidos">
+      ${recolhe('lembretes', '📌 Lembretes sem data', lemSemData.length, `<div class="card bloco">${lemSemData.map(itemLembrete).join('')}</div>`)}
+      ${recolhe('todas', '🗂 Todas as minhas tarefas', minhas.length, listaHtml(minhas.slice().sort(ordem), ''))}
+      ${recolhe('passei', '👥 Que eu passei para outras pessoas', criei.length, listaHtml(criei, ''))}
     </div>`;
 }
 
@@ -1331,6 +1406,9 @@ main.addEventListener('click', e => {
   const ir = e.target.closest('[data-ir]');
   if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: ir.hasAttribute('data-eu') ? '_eu' : '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); window.scrollTo(0, 0); return; }
   const cap = e.target.closest('[data-captura]'); if (cap) { capturaRapida(cap.dataset.captura); return; }
+  if (e.target.closest('[data-ir-cronograma]')) { S.vista = 'cronograma'; S.gScroll = null; desenha(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('[data-atualiza-agenda]')) { api('GET', '/api/agenda/eventos?dias=7&atualizar=1').then(a => { S.agendaEv = a; desenha(); toast('Agenda atualizada.'); }).catch(er => toast(er.message, true)); return; }
+  if (e.target.closest('.ag-item a, .ag-abre')) return; // links da agenda abrem normalmente
   if (e.target.closest('[data-narrar]')) { const q = $('#qTxt'); janelaNarrar(q ? q.value : ''); return; }
   const rola = e.target.closest('[data-rola]');
   if (rola) { const alvo = $('#b-' + rola.dataset.rola); if (alvo) { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); alvo.classList.add('pisca'); setTimeout(() => alvo.classList.remove('pisca'), 1200); } return; }

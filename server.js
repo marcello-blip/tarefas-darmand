@@ -325,7 +325,22 @@ app.post('/api/google/sincronizar', auth, async (req, res) => {
   const st = await agenda.status(req.email); if (!st.conectado) return res.status(400).json({ erro: 'Seu Google Agenda não está conectado.' });
   res.json({ ok: true, tarefas: await agenda.sincronizarPessoa(req.email) });
 });
-app.post('/api/google/desconectar', auth, async (req, res) => { await agenda.desconectar(req.email); res.json({ ok: true }); });
+app.post('/api/google/desconectar', auth, async (req, res) => { await agenda.desconectar(req.email); cacheEventos.delete(req.email); res.json({ ok: true }); });
+// compromissos do Google Agenda de hoje até os próximos dias (para o Início). Guardados por 2 minutos para não pesar.
+const cacheEventos = new Map();
+app.get('/api/agenda/eventos', auth, async (req, res) => {
+  const st = await agenda.status(req.email);
+  if (!st.conectado) return res.json({ conectado: false, disponivel: st.disponivel, eventos: [] });
+  const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 7, 1), 14), de = hojeSP(), ate = somaDias(de, dias);
+  const c = cacheEventos.get(req.email), chave = de + '|' + dias;
+  if (c && c.chave === chave && Date.now() - c.t < 120e3 && req.query.atualizar !== '1') return res.json({ conectado: true, eventos: c.eventos });
+  try {
+    const eventos = await agenda.eventos(req.email, de, ate);
+    if (eventos === null) return res.json({ conectado: true, erro: 'Não foi possível ler sua agenda agora.', eventos: c ? c.eventos : [] });
+    cacheEventos.set(req.email, { t: Date.now(), chave, eventos });
+    res.json({ conectado: true, eventos });
+  } catch (e) { console.error('agenda: falha ao ler eventos', req.email, e.message); res.json({ conectado: true, erro: 'Não foi possível ler sua agenda agora.', eventos: c ? c.eventos : [] }); }
+});
 if (DEV && process.env.GOOGLE_FAKE_BASE) {
   app.get('/dev/google-falso', async (req, res) => {
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress || '')) return res.status(403).end();
