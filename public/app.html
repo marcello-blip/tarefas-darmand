@@ -277,7 +277,7 @@ button.kpi:hover{border-color:var(--muted)}
 .dia-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:20px;align-items:start}
 .dia-grid>*{min-width:0}
 .dia-lado{display:flex;flex-direction:column;gap:16px}
-.hoje{border-top:3px solid var(--brand);min-height:180px}
+.bloco-hoje{border-top:3px solid var(--brand);min-height:180px}
 .ag-sec+.ag-sec{margin-top:14px}
 .ag-st{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:2px 0 6px}
 .ag-item{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
@@ -435,6 +435,100 @@ button.kpi:hover{border-color:var(--muted)}
   .fundo{padding:0}
   .janela{border-radius:0;min-height:100vh}
 }
+
+/* ================= tema de vidro (estilo "liquid glass") =================
+   Fundo colorido desfocado + superfícies translúcidas com desfoque, borda clara e brilho no alto.
+   Onde o sistema pede menos transparência, ou o navegador não desfoca, as superfícies ficam sólidas. */
+:root{
+  --surface:rgba(255,255,255,.58);--surface2:rgba(255,255,255,.38);--line:rgba(30,30,60,.09);--gray-soft:rgba(120,120,150,.12);
+  --brand-soft:rgba(157,22,46,.10);--red-soft:rgba(192,57,43,.11);--amber-soft:rgba(183,121,31,.12);--blue-soft:rgba(43,108,176,.11);--green-soft:rgba(47,133,90,.11);
+  --vidro-borda:rgba(255,255,255,.75);--vidro-brilho:rgba(255,255,255,.85);--solido:#f6f6fa;--campo:rgba(255,255,255,.62);
+  --shadow:0 10px 30px rgba(40,40,90,.08),0 1px 2px rgba(40,40,90,.06);
+  --raio:20px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0c0b12;--surface:rgba(34,32,44,.55);--surface2:rgba(255,255,255,.045);--line:rgba(255,255,255,.085);--gray-soft:rgba(255,255,255,.07);
+  --brand-soft:rgba(208,66,92,.18);--red-soft:rgba(239,107,94,.15);--amber-soft:rgba(224,168,74,.15);--blue-soft:rgba(106,165,232,.15);--green-soft:rgba(92,194,138,.14);
+  --vidro-borda:rgba(255,255,255,.12);--vidro-brilho:rgba(255,255,255,.16);--solido:#17161f;--campo:rgba(0,0,0,.28);
+  --shadow:0 12px 34px rgba(0,0,0,.38);
+}}
+body{background:var(--bg);background-attachment:fixed}
+/* fundo: manchas de cor desfocadas, fixas atrás de tudo */
+body::before{content:'';position:fixed;inset:-10%;z-index:-1;pointer-events:none;filter:blur(60px) saturate(130%);
+  background:
+    radial-gradient(38% 42% at 12% 8%,rgba(157,22,46,.30),transparent 70%),
+    radial-gradient(34% 40% at 88% 14%,rgba(56,120,220,.26),transparent 70%),
+    radial-gradient(40% 46% at 70% 92%,rgba(140,90,220,.22),transparent 70%),
+    radial-gradient(30% 34% at 20% 85%,rgba(40,170,160,.16),transparent 70%),
+    linear-gradient(180deg,#f4f3f9,#eceef6)}
+@media (prefers-color-scheme:dark){body::before{background:
+    radial-gradient(38% 42% at 12% 8%,rgba(190,40,70,.36),transparent 70%),
+    radial-gradient(34% 40% at 88% 14%,rgba(60,110,230,.30),transparent 70%),
+    radial-gradient(40% 46% at 70% 92%,rgba(130,80,220,.28),transparent 70%),
+    radial-gradient(30% 34% at 20% 85%,rgba(30,150,140,.18),transparent 70%),
+    linear-gradient(180deg,#0e0d15,#0a0a10)}}
+/* superfícies de vidro */
+.vidro,header .topo,.card,.janela,.captura,.coluna,.recolhe>summary,.menu-eu .pop,.chip-kpi,.alerta-atraso>summary,.kpi,.proximo,.toast{
+  background:var(--surface);border:1px solid var(--vidro-borda);
+  -webkit-backdrop-filter:blur(22px) saturate(175%);backdrop-filter:blur(22px) saturate(175%);
+  box-shadow:inset 0 1px 0 var(--vidro-brilho),var(--shadow)}
+.card,.janela,.captura,.kpi{border-radius:var(--raio)}
+.coluna{border-radius:var(--raio);background:var(--surface2)}
+.recolhe>summary,.alerta-atraso>summary,.proximo{border-radius:16px}
+.alerta-atraso>summary{background:var(--red-soft)}
+.proximo{background:var(--blue-soft)}
+/* barra do topo flutuante */
+header{background:transparent;border:0;padding:10px 12px 0;top:0}
+header .topo{border-radius:22px;padding:8px 10px 8px 14px}
+nav button{border-radius:999px;padding:7px 14px}
+nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0 1px 0 var(--vidro-brilho),0 2px 8px rgba(0,0,0,.08)}
+@media (prefers-color-scheme:dark){nav button.ativo{background:rgba(255,255,255,.10);color:#fff}}
+/* botões em pílula */
+.btn{border-radius:999px;background:var(--campo);border:1px solid var(--vidro-borda);box-shadow:inset 0 1px 0 var(--vidro-brilho)}
+.btn:hover{background:var(--surface)}
+.btn.prim{background:linear-gradient(180deg,#c22a46,#9d162e);border-color:rgba(255,255,255,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(157,22,46,.30)}
+@media (prefers-color-scheme:dark){.btn.prim{background:linear-gradient(180deg,#e0566f,#b4203d)}}
+.alterna{border-radius:999px;border:1px solid var(--vidro-borda);background:var(--campo)}
+.alterna button{background:transparent}
+.alterna button.ativo{background:var(--surface);box-shadow:inset 0 1px 0 var(--vidro-brilho)}
+/* campos */
+.captura>input,.captura-op input,.captura-op select,.filtros input,.filtros select,.campo input,.campo select,.campo textarea,.narra-txt,.membros-acoes select,.g-rot select,.prop input,.prop select,.reu input,.novo-coment textarea{
+  background:var(--campo);border:1px solid var(--line);border-radius:12px}
+.captura>input{border-radius:14px}
+/* cartões do quadro e itens */
+.cartao{background:var(--surface);border:1px solid var(--vidro-borda);border-radius:14px;box-shadow:inset 0 1px 0 var(--vidro-brilho),0 4px 14px rgba(0,0,0,.06)}
+.linha:hover,.ag-item.tarefa:hover,.ag-item.lembrete:hover{background:var(--gray-soft)}
+.ag-item.agora{background:var(--blue-soft)}
+.membro{background:var(--campo);border-color:var(--vidro-borda)}
+.chk{border-color:rgba(120,120,150,.45)}
+/* janelas */
+.fundo{background:rgba(10,10,20,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.janela{background:var(--surface)}
+.janela .cab,.janela .rodape{border-color:var(--line)}
+.toast{color:var(--ink);border-radius:16px}
+.toast.erro{background:rgba(192,57,43,.88);color:#fff}
+/* partes que precisam ser opacas para ler bem (rolam por baixo de outras) */
+.g-rot,.g-cab,.g-cab .g-rot,.g-grupo .g-rot,.g-grupo .g-pista{background:var(--solido)}
+.gantt{background:var(--solido)}
+.cal{background:var(--solido)}
+.cal .dsem,.cal .dia.fora{background:rgba(120,120,150,.06)}
+/* celular: desfoque mais leve (desempenho) */
+@media (max-width:640px){
+  .vidro,header .topo,.card,.janela,.captura,.coluna,.recolhe>summary,.menu-eu .pop,.chip-kpi,.alerta-atraso>summary,.kpi,.proximo,.toast{-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
+  header{padding:6px 8px 0}
+  .fundo{padding:0}
+  .janela{border-radius:0}
+}
+/* sem desfoque disponível ou pedindo menos transparência: superfícies sólidas */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root{--surface:#ffffff;--surface2:#f7f7fa}
+  @media (prefers-color-scheme:dark){:root{--surface:#1f1e27;--surface2:#24232c}}
+}
+@media (prefers-reduced-transparency:reduce){
+  :root{--surface:#ffffff;--surface2:#f7f7fa;--campo:#ffffff}
+  body::before{display:none}
+}
+@media (prefers-reduced-transparency:reduce) and (prefers-color-scheme:dark){:root{--surface:#1f1e27;--surface2:#24232c;--campo:#15141b}}
 </style>
 </head>
 <body>
@@ -945,7 +1039,7 @@ function vInicio() {
     </div>
     ${atrasadas.length ? `<details class="alerta-atraso" data-recolhe="atrasadas" ${localGet('abre.atrasadas') === '1' ? 'open' : ''}><summary>⚠️ Você tem <b>${plural(atrasadas.length, 'tarefa atrasada', 'tarefas atrasadas')}</b> <span class="st">ver</span></summary><div class="card lista">${atrasadas.map(linha).join('')}</div></details>` : ''}
     <div class="dia-grid">
-      <section class="card bloco hoje">
+      <section class="card bloco bloco-hoje">
         <div class="bloco-cab"><h3>📅 Hoje</h3><span style="display:flex;gap:6px">${ag.conectado ? `<button class="btn peq" data-reuniao>+ Reunião</button><button class="btn peq" data-atualiza-agenda title="Buscar de novo no Google Agenda">↻</button>` : ''}</span></div>
         ${ag.erro ? `<div class="aviso">${esc(ag.erro)}</div>` : ''}
         ${blocoHoje}
