@@ -9,7 +9,9 @@ let cliente = null;
 const cli = () => cliente || (cliente = new Anthropic({ timeout: 120000, maxRetries: 1 }));
 
 const dataOuNulo = { type: ['string', 'null'] };
-const RECORRENCIA = { type: ['string', 'null'], enum: ['diaria', 'dias_uteis', 'semanal', 'quinzenal', 'mensal', 'anual', null] };
+// "repete ou não": a lista de valores fica só no ramo de texto. A API recusa enum junto com tipo ['string','null']
+// (erro 400 "Enum value 'diaria' does not match declared type"), o que derrubava toda narração.
+const RECORRENCIA = { anyOf: [{ type: 'string', enum: ['diaria', 'dias_uteis', 'semanal', 'quinzenal', 'mensal', 'anual'] }, { type: 'null' }] };
 const SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['resumo', 'projetos_novos', 'tarefas', 'lembretes', 'reunioes', 'duvidas'],
