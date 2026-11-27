@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tarefas DARMAND</title>
+<title>Gestão DARMAND</title>
 <link rel="icon" type="image/png" href="/marca/icone-64.png">
 <link rel="apple-touch-icon" href="/marca/icone-180.png">
 <meta name="theme-color" content="#9d162e">
@@ -574,20 +574,81 @@ nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0
   body::before{display:none}
 }
 @media (prefers-reduced-transparency:reduce){:root[data-tema="escuro"]{--surface:#1f1e27;--surface2:#24232c;--campo:#15141b}}
+
+/* ================= casca unificada: barra de módulos à esquerda, abas no topo, portal num quadro ================= */
+body{display:grid;grid-template-columns:84px minmax(0,1fr);min-height:100vh;min-height:100dvh}
+.rail{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 0 12px;z-index:25;
+  background:var(--surface);border-right:1px solid var(--vidro-borda);-webkit-backdrop-filter:blur(22px) saturate(175%);backdrop-filter:blur(22px) saturate(175%)}
+.rail .marca{width:46px;height:46px;border-radius:15px;background:linear-gradient(180deg,#c22a46,#9d162e);display:grid;place-items:center;margin-bottom:12px;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 16px rgba(157,22,46,.28)}
+.rail .marca i{display:block;width:32px;height:12px;background:#fff;-webkit-mask:url(/marca/peixe-branco.png) center/contain no-repeat;mask:url(/marca/peixe-branco.png) center/contain no-repeat}
+.rail .esp{flex:1}
+.mod{width:68px;padding:9px 0 7px;border:0;background:none;border-radius:14px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:500;position:relative;flex:none}
+.mod svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mod:hover{background:var(--gray-soft);color:var(--ink)}
+.mod.ativo{background:var(--campo);color:var(--brand);font-weight:600;box-shadow:inset 0 1px 0 var(--vidro-brilho),0 2px 10px rgba(157,22,46,.12)}
+:root[data-tema="escuro"] .mod.ativo{background:rgba(255,255,255,.10);color:#fff}
+.mod .bdg{position:absolute;top:3px;right:11px;min-width:17px;height:17px;border-radius:9px;background:var(--brand);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.casca{min-width:0;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+.casca.no-portal{height:100vh;height:100dvh}
+header .topo{max-width:none}
+main{width:100%}
+.mod-tit{font-size:17px;font-weight:700;white-space:nowrap;margin:0 4px 0 2px}
+.loja-sel{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:var(--campo);border:1px solid var(--vidro-borda);font-size:12.5px;color:var(--muted);white-space:nowrap;flex:none}
+.loja-sel select{border:0;background:transparent;font:inherit;font-weight:600;color:var(--ink);max-width:180px;padding:2px 0;outline-offset:4px}
+.loja-sel select option{color:#1d1d1b}
+.loja-sel b{color:var(--ink);font-weight:600}
+#portalBox{flex:1;min-height:0;position:relative}
+#portalBox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+.mods-baixo{display:none}
+.mais-folha{position:fixed;left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:41;padding:8px;border-radius:18px;background:var(--solido);border:1px solid var(--line);box-shadow:var(--shadow);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.mais-folha .mod{width:auto}
+/* Início: minha loja, rede e comunicados */
+.loja-num{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.loja-num b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.loja-num span{font-size:12.5px;color:var(--muted)}
+.loja-barra{height:8px;border-radius:4px;background:var(--gray-soft);margin:8px 0 6px;overflow:hidden}
+.loja-barra i{display:block;height:100%;border-radius:4px;background:var(--green)}
+.loja-barra i.atras{background:var(--amber)}
+.loja-nota{font-size:12.5px;color:var(--muted)}
+.loja-lin{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.loja-lin .tit{flex:1;min-width:0}
+.loja-lin .tit b{display:block;font-weight:600}
+.loja-lin .tit small{color:var(--red);font-size:12px}
+.com-lin{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.com-lin:first-of-type{border-top:0}
+.com-lin b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.com-lin:hover b{color:var(--brand)}
+.orig{color:var(--brand);font-weight:600}
+/* abas sempre numa linha própria, embaixo do título; se não couberem numa linha, quebram em duas (nunca ficam escondidas) */
+.topo{flex-wrap:wrap;gap:8px 12px}
+nav#nav{order:3;flex:1 1 100%;flex-wrap:wrap;overflow:visible;gap:4px;padding-top:6px;border-top:1px solid var(--line)}
+nav#nav:empty{display:none}
+.eu{margin-left:auto}
+@media (max-width:760px){
+  body{display:block}
+  .rail{display:none}
+  .mods-baixo{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:40;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--solido);border-top:1px solid var(--line)}
+  .mods-baixo .mod{width:auto;padding:6px 0 4px}
+  .mods-baixo .mod .bdg{right:calc(50% - 22px)}
+  main{padding-bottom:110px}
+  .casca.no-portal #portalBox{margin-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .loja-sel select{max-width:120px}
+  #btnNarrar{display:none}
+  nav#nav button{padding:6px 11px;font-size:13.5px}
+  .captura-linha .captura-bt{flex-wrap:wrap}
+}
+@media (max-width:1000px){.dia-grid{grid-template-columns:minmax(0,1fr)!important}}
+
 </style>
 </head>
 <body>
+<aside class="rail" id="rail" aria-label="Módulos"></aside>
+<div class="casca" id="casca">
 <header>
   <div class="topo">
-    <div class="logo"><span class="peixe" role="img" aria-label="DARMAND"></span><span>Tarefas</span></div>
-    <nav id="nav">
-      <button data-v="inicio" class="ativo">Início</button>
-      <button data-v="tarefas">Tarefas</button>
-      <button data-v="cronograma">Cronograma</button>
-      <button data-v="prazos">Prazos</button>
-      <button data-v="projetos">Projetos</button>
-      <button data-v="equipe">Equipe</button>
-    </nav>
+    <h1 class="mod-tit" id="modTit">Início</h1>
+    <span class="loja-sel oculto" id="lojaBox"></span>
+    <nav id="nav" aria-label="Telas do módulo"></nav>
     <div class="eu">
       <button class="btn" id="btnNarrar" title="Fale ou escreva o que precisa ser feito e a IA monta as tarefas">🎙 Narrar</button>
       <button class="btn prim" id="btnNova">+ Nova tarefa</button>
@@ -600,10 +661,13 @@ nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0
   </div>
 </header>
 <main id="main"><div class="carregando">Carregando…</div></main>
+<div id="portalBox" class="oculto"><iframe id="portal" title="Vendas, produto e pessoas"></iframe></div>
+</div>
+<div class="mods-baixo" id="barra" role="navigation" aria-label="Módulos"></div>
 
 <script>
 // ---------------- estado ----------------
-const S = { me: null, pessoas: [], projetos: [], tarefas: [], lembretes: [], vista: 'inicio', modo: null, modoInicio: null, verFeitos: false,
+const S = { me: null, pessoas: [], projetos: [], tarefas: [], lembretes: [], vista: 'inicio', pmod: null, pv: { vendas: 'visao', produto: 'demanda', pessoas: 'comunicados', admin: 'admin' }, portal: null, resumo: null, modo: null, modoInicio: null, verFeitos: false,
   f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null,
   g: { agrupar: localGet('agrupar') || 'projeto', escala: localGet('escala') || 'semanas', resp: '', proj: '', concluidas: false }, gScroll: null,
   pf: 'abertos', projetoSel: null };
@@ -646,6 +710,8 @@ async function carrega() {
   const [me, pessoas, projetos, tarefas, lembretes, agendaEv] = await Promise.all([api('GET', '/api/me'), api('GET', '/api/pessoas'), api('GET', '/api/projetos'), api('GET', '/api/tarefas'), api('GET', '/api/lembretes'),
     api('GET', '/api/agenda/eventos?dias=7').catch(() => ({ conectado: false, eventos: [] }))]);
   Object.assign(S, { me, pessoas, projetos, tarefas, lembretes, agendaEv });
+  if (!temPortal()) S.resumo = null;
+  else if (!S.resumo || Date.now() - (S.resumoEm || 0) > 300000) { S.resumo = await api('GET', '/papi/resumo').catch(() => S.resumo); S.resumoEm = Date.now(); }
   // como cada pessoa prefere ver as tarefas (salvo na conta dela)
   if (!S.modo) S.modo = (me.prefs && me.prefs.visao) || 'lista';
   if (!S.modoInicio) S.modoInicio = (me.prefs && me.prefs.visaoInicio) || 'lista';
@@ -658,6 +724,7 @@ function aplicaTema(escolha) {
   const escuro = escolha === 'escuro' || (escolha === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
   botaoTema();
+  try { mandaPortal({ portalCmd: 'tema', tema: escuro ? 'escuro' : 'claro' }); } catch {}
 }
 // botão de lua/sol na barra do topo: um clique troca entre claro e escuro (o "Automático" fica no menu da conta)
 function botaoTema() {
@@ -732,7 +799,7 @@ function linha(t) {
   const feito = t.status === 'concluida';
   return `<div class="linha ${feito ? 'feita' : ''}" data-id="${t.id}">
     <button class="chk ${feito ? 'on' : ''}" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="${feito ? 'Reabrir' : 'Concluir'}">${feito ? CHECK : ''}</button>
-    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status === 'aguardando' ? '<span class="selo hoje">⏳ Aguardando aprovação</span>' : t.status === 'andamento' ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁 ${esc(RECORR_NOME[t.recorrencia])}</span>` : ''}${avsParticipantes(t)}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
+    <div class="tit"><span>${esc(t.titulo)}</span><small>${t.origem ? '<span class="st orig" title="Tarefa criada a partir de um comunicado da matriz">📣 Comunicado da matriz</span>' : ''}${chipProjeto(t.projetoId)}${t.status === 'aguardando' ? '<span class="selo hoje">⏳ Aguardando aprovação</span>' : t.status === 'andamento' ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁 ${esc(RECORR_NOME[t.recorrencia])}</span>` : ''}${avsParticipantes(t)}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
     <span class="pri p${t.prioridade} esconde-p">${t.prioridade >= 3 ? PRI[t.prioridade] : ''}</span>
     <span class="esconde-p">${avatar(t.responsavel, 'p')}</span>
     ${seloPrazo(t)}
@@ -755,9 +822,95 @@ function quadroHtml(ts) {
 const alterna = (atual, attr) => `<div class="alterna"><button ${attr}="lista" class="${atual === 'lista' ? 'ativo' : ''}">☰ Lista</button><button ${attr}="quadro" class="${atual === 'quadro' ? 'ativo' : ''}">▦ Quadro</button></div>`;
 
 // ---------------- vistas ----------------
-function desenha() {
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('ativo', b.dataset.v === S.vista));
+// ---------------- módulos (barra lateral) e abas ----------------
+const ICO = {
+  inicio: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  vendas: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  produto: '<path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/>',
+  pessoas: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.4.6 4 2.6 4 5.5"/>',
+  tarefas: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M7.5 13l3 3 6-6"/>',
+  admin: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  mais: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+};
+// quem tem acesso aos módulos do portal: a diretoria e quem está vinculado a uma loja
+const temPortal = () => !!(S.me && S.me.portal && S.me.portal.dados && (S.me.portal.admin || S.me.portal.vinculo));
+const diretoria = () => temPortal() && !!S.me.portal.admin;
+function modulos() {
+  const d = diretoria(), m = [{ id: 'inicio', nome: 'Início' }];
+  if (temPortal()) m.push(
+    { id: 'vendas', nome: 'Vendas', portal: true, abas: [['visao', 'Visão geral'], ['vendas', 'Vendas'], ['metas', 'Metas'], ['ano', 'Ano'], ['ese', 'E se?'], ['campanhas', 'Campanhas'], ['rede', 'Grupo']] },
+    { id: 'produto', nome: 'Produto', portal: true, abas: [['demanda', 'Demanda e produtos'], ['produto', 'Ficha do produto'], ['estoque', 'Estoque']] },
+    { id: 'pessoas', nome: 'Pessoas', portal: true, abas: [['comunicados', 'Comunicados'], ['equipe', 'Vendedores'], ['time', d ? 'Contexto das equipes' : 'Minha equipe'], ['perfil', d ? 'Personagens' : 'Meu personagem']] });
+  m.push({ id: 'tarefas', nome: 'Tarefas', abas: [['tarefas', 'Tarefas'], ['cronograma', 'Cronograma'], ['prazos', 'Prazos'], ['projetos', 'Projetos'], ['equipe', 'Equipe']] });
+  if (d) m.push({ id: 'admin', nome: 'Admin', portal: true, fim: true, abas: [['admin', 'Lojas e gerentes']] });
+  return m;
+}
+const modAtual = () => { const ms = modulos(); return (S.pmod && ms.find(m => m.id === S.pmod)) || ms.find(m => m.id === (S.vista === 'inicio' ? 'inicio' : 'tarefas')); };
+function vaiModulo(id) {
+  const m = modulos().find(x => x.id === id); if (!m) return;
+  fechaMais();
+  if (m.portal) S.pmod = id; else { S.pmod = null; if (id === 'inicio') S.vista = 'inicio'; else if (S.vista === 'inicio') S.vista = 'tarefas'; }
+  S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0);
+}
+function mandaPortal(msg) { const f = document.getElementById('portal'); if (f && f.dataset.on && f.contentWindow) f.contentWindow.postMessage(msg, location.origin); }
+function fechaMais() { const x = document.getElementById('maisFolha'); if (x) x.remove(); }
+function desenhaCasca() {
+  const ms = modulos(), m = modAtual(), naoLidos = S.portal ? S.portal.naoLidos : (S.resumo && S.resumo.naoLidos ? S.resumo.naoLidos.length : 0);
+  const aprovar = S.tarefas.filter(t => t.status === 'aguardando' && podeAprovar(t) && t.responsavel !== S.me.email).length;
+  const selo = id => { const n = id === 'pessoas' ? naoLidos : id === 'tarefas' ? aprovar : 0; return n ? `<span class="bdg" title="${id === 'pessoas' ? 'comunicados sem ciente' : 'tarefas para aprovar'}">${n}</span>` : ''; };
+  const bt = x => `<button class="mod ${x.id === m.id ? 'ativo' : ''}" data-mod="${x.id}" ${x.id === m.id ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICO[x.id]}</svg>${x.nome}${selo(x.id)}</button>`;
+  $('#rail').innerHTML = '<div class="marca" title="Gestão DARMAND"><i></i></div>' + ms.filter(x => !x.fim).map(bt).join('') + '<div class="esp"></div>' + ms.filter(x => x.fim).map(bt).join('');
+  // celular: 4 módulos na barra de baixo e o resto em "Mais"
+  const ordemCel = ['inicio', 'vendas', 'tarefas', 'pessoas'].filter(id => ms.some(x => x.id === id)), resto = ms.filter(x => !ordemCel.includes(x.id));
+  $('#barra').style.gridTemplateColumns = `repeat(${ordemCel.length + (resto.length ? 1 : 0)}, minmax(0, 1fr))`;
+  $('#barra').innerHTML = ordemCel.map(id => bt(ms.find(x => x.id === id))).join('') + (resto.length ? `<button class="mod ${resto.some(x => x.id === m.id) ? 'ativo' : ''}" data-mais><svg viewBox="0 0 24 24" aria-hidden="true">${ICO.mais}</svg>Mais</button>` : '');
+  $('#modTit').textContent = m.nome;
+  const atual = m.portal ? S.pv[m.id] : S.vista;
+  $('#nav').innerHTML = (m.abas || []).map(([k, n]) => `<button ${m.portal ? 'data-p' : 'data-v'}="${k}" class="${k === atual ? 'ativo' : ''}">${esc(n)}</button>`).join('');
+  // loja: a diretoria escolhe; o gerente vê a sua
+  const lb = $('#lojaBox'), p = S.portal;
+  if (m.portal && p && (p.lojas.length || p.lojaNome)) {
+    lb.classList.remove('oculto');
+    lb.innerHTML = p.lojas.length ? `Loja <select id="selLoja" aria-label="Loja">${p.lojas.map(l => `<option value="${esc(l.id)}" ${l.id === p.loja ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select>` : `Loja <b>${esc(p.lojaNome)}</b>`;
+  } else lb.classList.add('oculto');
   $('#btnEu').innerHTML = avatar(S.me.email);
+  document.title = m.nome + ' · Gestão DARMAND';
+}
+// módulos do portal: a página antiga abre num quadro, já na tela pedida
+function mostraPortal() {
+  const m = modAtual(), v = S.pv[m.id], f = $('#portal');
+  $('#main').classList.add('oculto'); $('#portalBox').classList.remove('oculto'); $('#casca').classList.add('no-portal');
+  if (!f.dataset.on) { f.dataset.on = '1'; f.src = '/painel#' + v; }
+  else { try { if (f.contentWindow.location.hash.slice(1) !== v) f.contentWindow.location.replace('/painel#' + v); } catch {} }
+}
+// o que a página do portal avisa: tela atual, lojas, comunicados sem ciente, pedido para abrir uma tarefa
+window.addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || !e.data.portal) return; const d = e.data;
+  if (d.abreTarefa) { const t = S.tarefas.find(x => x.id === d.abreTarefa); if (t) janelaTarefa(t); else recarrega().then(() => { const t2 = S.tarefas.find(x => x.id === d.abreTarefa); if (t2) janelaTarefa(t2); else toast('Esta tarefa não aparece para você.', true); }); return; }
+  if (d.tarefasMudaram) { S.resumoEm = 0; recarregaSilencioso(); return; }
+  if (!d.view || !S.me) return;
+  S.portal = { lojas: d.lojas || [], loja: d.loja, lojaNome: d.lojaNome, naoLidos: d.naoLidos || 0 };
+  // se a tela mudou por um clique dentro do portal, acende o módulo e a aba certos
+  if (S.pmod) { const dono = modulos().find(m => m.portal && m.abas.some(a => a[0] === d.view)); if (dono) { S.pmod = dono.id; S.pv[dono.id] = d.view; } }
+  if (!(document.activeElement && document.activeElement.id === 'selLoja')) desenhaCasca();
+});
+document.addEventListener('change', e => { if (e.target.id === 'selLoja') { S.portal.loja = e.target.value; mandaPortal({ portalCmd: 'loja', id: e.target.value }); e.target.blur(); } });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-mod]'); if (b) { vaiModulo(b.dataset.mod); return; }
+  if (e.target.closest('[data-mais]')) {
+    if (document.getElementById('maisFolha')) return fechaMais();
+    const ms = modulos(), fora = ms.filter(x => !['inicio', 'vendas', 'tarefas', 'pessoas'].includes(x.id)), m = modAtual();
+    const d = document.createElement('div'); d.className = 'mais-folha'; d.id = 'maisFolha';
+    d.innerHTML = fora.map(x => `<button class="mod ${x.id === m.id ? 'ativo' : ''}" data-mod="${x.id}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO[x.id]}</svg>${x.nome}</button>`).join('');
+    document.body.appendChild(d); return;
+  }
+  if (!e.target.closest('#maisFolha')) fechaMais();
+});
+
+function desenha() {
+  desenhaCasca();
+  if (modAtual().portal) { mostraPortal(); return; }
+  $('#portalBox').classList.add('oculto'); $('#main').classList.remove('oculto'); $('#casca').classList.remove('no-portal');
   const g = $('.gantt'); if (g) S.gScroll = g.scrollLeft;
   $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, cronograma: vCronograma, prazos: vPrazos, projetos: () => S.projetoSel ? vProjeto() : vProjetos(), equipe: vEquipe }[S.vista]();
   const g2 = $('.gantt');
@@ -1024,7 +1177,7 @@ function itemEvento(e, ehProximo) {
 function itemTarefa(t) {
   return `<div class="ag-item tarefa" data-id="${t.id}">
     <button class="chk" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="Concluir">${''}</button>
-    <span class="ag-tit"><b>${esc(t.titulo)}</b><small>${t.projetoId ? chipProjeto(t.projetoId) : 'Tarefa'}${t.status === 'aguardando' ? ' · ⏳ aguardando aprovação' : t.status === 'andamento' ? ' · fazendo' : ''}${t.recorrencia ? ' · 🔁' : ''}</small></span>
+    <span class="ag-tit"><b>${esc(t.titulo)}</b><small>${t.origem ? '<span class="orig">📣 Comunicado da matriz</span>' : t.projetoId ? chipProjeto(t.projetoId) : 'Tarefa'}${t.status === 'aguardando' ? ' · ⏳ aguardando aprovação' : t.status === 'andamento' ? ' · fazendo' : ''}${t.recorrencia ? ' · 🔁' : ''}</small></span>
     ${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}
   </div>`;
 }
@@ -1084,6 +1237,23 @@ function vInicio() {
     ].sort((a, b) => a.o.localeCompare(b.o));
     if (its.length) dias.push(`<div class="pd-dia"><div class="pd-rot">${rotuloDia(d)}</div>${its.slice(0, 4).map(x => `<div class="pd-it" ${x.id ? `data-id="${x.id}"` : ''}>${x.html}</div>`).join('')}${its.length > 4 ? `<div class="pd-mais">+${its.length - 4}</div>` : ''}</div>`);
   }
+  // minha loja no mês (gerente) ou a rede (diretoria), e os comunicados sem "ciente"
+  const R$ = v => 'R$ ' + Math.round(v || 0).toLocaleString('pt-BR'), rs = S.resumo && S.resumo.acesso ? S.resumo : null;
+  let cartaoLoja = '', cartaoRitmo = '', cartaoCom = '';
+  if (rs && rs.lojas.length) {
+    const tot = rs.lojas.reduce((a, l) => ({ v: a.v + l.vendido, m: a.m + l.meta, e: a.e + l.esperado }), { v: 0, m: 0, e: 0 });
+    const pct = tot.m ? tot.v / tot.m : 0, ritmo = tot.e ? tot.v / tot.e : null, mesNome = MESES[+rs.mes.slice(5) - 1];
+    const ult = rs.lojas.map(l => l.ultimoDia && l.ultimoDia.dia).filter(Boolean).sort().pop();
+    cartaoLoja = `<div class="card bloco"><div class="bloco-cab"><h3>🏬 ${rs.admin ? 'A rede em ' + mesNome : esc(rs.lojas[0].nome) + ' em ' + mesNome}</h3><button class="btn peq" data-ir-portal="vendas:visao">ver vendas</button></div>
+      <div class="loja-num"><b>${R$(tot.v)}</b><span>meta ${tot.m ? R$(tot.m) : 'não definida'}</span></div>
+      ${tot.m ? `<div class="loja-barra"><i class="${ritmo != null && ritmo < 1 ? 'atras' : ''}" style="width:${Math.min(100, pct * 100).toFixed(0)}%"></i></div>` : ''}
+      <div class="loja-nota">${tot.m ? `<b>${Math.round(pct * 100)}%</b> da meta do mês` : ''}${ritmo != null ? ` · ${ritmo >= 1 ? 'no ritmo' : `${Math.round((1 - ritmo) * 100)}% abaixo do ritmo`}` : ''}${ult ? ` · vendas até ${brData(ult).slice(0, 5)}` : ''}</div></div>`;
+    if (rs.admin) {
+      const atras = rs.lojas.filter(l => l.esperado && l.vendido / l.esperado < 1).sort((a, b) => a.vendido / a.esperado - b.vendido / b.esperado).slice(0, 4);
+      if (atras.length) cartaoRitmo = `<div class="card bloco"><div class="bloco-cab"><h3>📉 Lojas abaixo do ritmo</h3></div>${atras.map(l => `<div class="loja-lin"><div class="tit"><b>${esc(l.nome)}</b><small>${Math.round(l.vendido / l.esperado * 100)}% do que a meta pedia até aqui</small></div><button class="btn peq" data-plano="${esc(l.id)}">Plano de ação</button></div>`).join('')}</div>`;
+    }
+  }
+  if (rs && rs.naoLidos && rs.naoLidos.length) cartaoCom = `<div class="card bloco"><div class="bloco-cab"><h3>📣 Comunicados novos <span class="n">${rs.naoLidos.length}</span></h3><button class="btn peq" data-ir-portal="pessoas:comunicados">abrir</button></div>${rs.naoLidos.map(r => `<div class="com-lin" data-ir-portal="pessoas:comunicados"><b>${esc(r.titulo)}</b>${r.acao ? '<span class="selo hoje">pede ação</span>' : ''}</div>`).join('')}</div>`;
   const recolhe = (chave, titulo, n, corpo, abertoPadrao) => n ? `<details class="recolhe" data-recolhe="${chave}" ${(localGet('abre.' + chave) || (abertoPadrao ? '1' : '0')) === '1' ? 'open' : ''}><summary>${titulo} <span class="n">${n}</span></summary>${corpo}</details>` : '';
   const tipo = localGet('qTipo') === 'lembrete' ? 'lembrete' : 'tarefa';
   return `
@@ -1110,11 +1280,13 @@ function vInicio() {
         ${blocoHoje}
       </section>
       <aside class="dia-lado">
+        ${cartaoLoja}${cartaoCom}
         ${aprovar.length ? `<div class="card bloco" id="b-aprovar"><div class="bloco-cab"><h3>⏳ Para aprovar <span class="n">${aprovar.length}</span></h3></div>${aprovar.map(t => `
           <div class="aprov-item" data-id="${t.id}"><div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(primeiroNome(t.responsavel))} terminou</small></div>
           <div class="aprov-bt"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div></div>`).join('')}</div>` : ''}
         <div class="card bloco"><div class="bloco-cab"><h3>🗓 Próximos dias</h3><button class="btn peq" data-ir-cronograma title="Ver tudo no cronograma">ver tudo</button></div>
           ${dias.length ? dias.join('') : '<div class="vazio-p">Nada marcado para os próximos dias.</div>'}</div>
+        ${cartaoRitmo}
       </aside>
     </div>
     <div class="recolhidos">
@@ -1368,7 +1540,7 @@ function janelaProjeto(p) {
     if (nova) d.membros = [...j.querySelectorAll('[data-conv]:checked')].map(x => x.value);
     if (!d.nome.trim()) { toast('Dê um nome ao projeto.', true); return; }
     if (d.inicio && d.fim && d.fim < d.inicio) { toast('O fim previsto não pode ser antes do início.', true); return; }
-    try { const r = await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast(nova ? 'Projeto criado.' : 'Projeto salvo.'); if (nova) { S.vista = 'projetos'; S.projetoSel = r.id; } await recarrega(); } catch (e) { toast(e.message, true); }
+    try { const r = await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast(nova ? 'Projeto criado.' : 'Projeto salvo.'); if (nova) { S.pmod = null; S.vista = 'projetos'; S.projetoSel = r.id; } await recarrega(); } catch (e) { toast(e.message, true); }
   };
 }
 
@@ -1573,7 +1745,7 @@ function revisaNarracao(p, textoOriginal) {
     if (falhas.length) toast(`${feito} ${ok + okL + okR === 1 ? 'criado' : 'criados'}; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${feito} ${ok + okL + okR === 1 ? 'criado' : 'criados'}. ✅`);
     const unico = Object.values(idDoNovo)[0];
     // só lembretes: volta para o mural; com tarefas: mostra no cronograma
-    if (ok) { S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico); } else S.vista = 'inicio';
+    S.pmod = null; if (ok) { S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico); } else S.vista = 'inicio';
     await recarrega(); window.scrollTo(0, 0);
   };
 }
@@ -1627,7 +1799,9 @@ async function mudaStatus(id, status, msg) {
   catch (e) { t.status = ant; desenha(); toast(e.message, true); }
 }
 
-document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.vista = b.dataset.v; S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0); };
+document.getElementById('nav').onclick = e => { const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.p) { S.pv[S.pmod] = b.dataset.p; desenha(); return; }
+  S.pmod = null; S.vista = b.dataset.v; S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0); };
 $('#btnNarrar').onclick = () => janelaNarrar('');
 $('#btnNova').onclick =() => janelaTarefa(null, S.vista === 'prazos' && S.diaSel ? { prazo: S.diaSel } : null);
 $('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu'), ag = S.me.agenda || {};
@@ -1654,6 +1828,10 @@ main.addEventListener('click', e => {
   if (chk) { e.stopPropagation(); const t = S.tarefas.find(x => x.id === +chk.dataset.chk); mudaStatus(t.id, t.status === 'concluida' ? 'afazer' : 'concluida'); return; }
   const ir = e.target.closest('[data-ir]');
   if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: ir.hasAttribute('data-eu') ? '_eu' : '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); window.scrollTo(0, 0); return; }
+  const ip = e.target.closest('[data-ir-portal]'); if (ip) { const [mod, v] = ip.dataset.irPortal.split(':'); S.pv[mod] = v; vaiModulo(mod); return; }
+  const pl = e.target.closest('[data-plano]'); if (pl) { const l = S.resumo.lojas.find(x => x.id === pl.dataset.plano), g = l.gerentes.find(em => pessoa(em) && pessoa(em).ativo);
+    janelaTarefa(null, { titulo: `Plano de ação · ${l.nome}: ${Math.round(l.vendido / l.esperado * 100)}% do ritmo da meta`, descricao: `A loja vendeu R$ ${Math.round(l.vendido).toLocaleString('pt-BR')} no mês; a meta pedia R$ ${Math.round(l.esperado).toLocaleString('pt-BR')} até aqui (meta do mês: R$ ${Math.round(l.meta).toLocaleString('pt-BR')}).\n\nO que vamos fazer para recuperar:\n1. \n2. \n3. `, responsavel: g || S.me.email, prioridade: 3, prazo: somaDias(hoje(), 3) });
+    if (!g) toast('Esta loja ainda não tem gerente vinculado. Escolha o responsável.', true); return; }
   const cap = e.target.closest('[data-captura]'); if (cap) { capturaRapida(cap.dataset.captura); return; }
   if (e.target.closest('[data-reuniao]')) { const q = $('#qTxt'); janelaReuniao({ titulo: q ? q.value : '', data: ($('#qData') || {}).value || undefined }); return; }
   if (e.target.closest('[data-ir-cronograma]')) { S.vista = 'cronograma'; S.gScroll = null; desenha(); window.scrollTo(0, 0); return; }

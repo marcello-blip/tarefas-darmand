@@ -88,7 +88,7 @@ async function initDb() {
     id serial PRIMARY KEY, titulo text NOT NULL, descricao text, responsavel text, criado_por text NOT NULL,
     projeto_id integer, prioridade integer NOT NULL DEFAULT 2, status text NOT NULL DEFAULT 'afazer', inicio date, prazo date,
     criado_em timestamptz NOT NULL DEFAULT now(), atualizado_em timestamptz NOT NULL DEFAULT now(), concluida_em timestamptz,
-    recorrencia text, recorrencia_de integer)`);
+    recorrencia text, recorrencia_de integer, origem text)`);
   // lembretes pessoais: só o dono vê (checklist, lembretes com ou sem data, que podem se repetir)
   await pool.query(`CREATE TABLE IF NOT EXISTS lembretes (
     id serial PRIMARY KEY, dono text NOT NULL, texto text NOT NULL, data date, recorrencia text,
@@ -124,6 +124,13 @@ async function initDb() {
   }
   await pool.query('CREATE TABLE IF NOT EXISTS tarefa_participantes (tarefa_id integer NOT NULL, email text NOT NULL, PRIMARY KEY (tarefa_id, email))');
   await agenda.init();
+  await portal.init();
+  // teste no computador: carrega os dados das lojas de uma pasta (a exportação da tarefa diária) e vincula gerentes de teste
+  if (DEV && process.env.PORTAL_SEMENTE) {
+    const n = await portal.semeia(process.env.PORTAL_SEMENTE.split(';').filter(Boolean));
+    for (const par of (process.env.PORTAL_VINCULOS || '').split(',').filter(Boolean)) { const [e, loja] = par.split(':'); await portal.grava('gerentes', e.trim().toLowerCase(), { loja: loja.trim(), papel: 'gerente', vinculadoEm: Date.now() }); }
+    console.log(`Portal: ${n} documentos de teste carregados.`);
+  }
 }
 
 // ---------- quem enxerga o quê ----------
@@ -176,7 +183,7 @@ function tarefaOut(t, nComent, parts) {
   return {
     id: t.id, titulo: t.titulo, descricao: t.descricao || '', responsavel: t.responsavel || null, criadoPor: t.criado_por,
     projetoId: t.projeto_id || null, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo),
-    recorrencia: t.recorrencia || null, participantes: parts || [],
+    recorrencia: t.recorrencia || null, participantes: parts || [], origem: t.origem || null,
     criadoEm: ms(t.criado_em), atualizadoEm: ms(t.atualizado_em), concluidaEm: ms(t.concluida_em), comentarios: nComent || 0,
   };
 }
@@ -194,7 +201,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(compression());
 app.use(cookieParser());
-app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.set('Referrer-Policy', 'same-origin'); res.set('X-Frame-Options', 'DENY'); next(); });
+app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.set('Referrer-Policy', 'same-origin'); res.set('X-Frame-Options', 'SAMEORIGIN'); next(); });
 
 app.get('/healthz', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, versao: String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null }));
 
@@ -257,12 +264,19 @@ async function auth(req, res, next) {
 }
 const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json({ erro: 'Só gestores podem fazer isso.' });
 
+// ---------- módulos do portal (vendas, produto, pessoas) ----------
+// PORTAL_DATABASE_URL (opcional): Postgres do portal antigo, de onde vêm os dados das lojas enquanto os dois sistemas rodam juntos
+const docsPool = process.env.PORTAL_DATABASE_URL && process.env.DATABASE_URL !== 'memoria'
+  ? new pg.Pool({ connectionString: process.env.PORTAL_DATABASE_URL, max: 5, ssl: process.env.PGSSL === 'disable' || process.env.PORTAL_DATABASE_URL.includes('railway.internal') ? false : { rejectUnauthorized: false } }) : null;
+if (docsPool) docsPool.on('error', e => console.error('portal: conexão com o banco do portal caiu:', e.message));
+const portal = require('./portal')({ app, express, pool, docsPool, auth, isAdmin: isAdminFixo, dominio: ALLOWED_DOMAIN, iguais, agenda, hojeSP });
+
 // ---------- página ----------
 app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public', 'app.html')));
 
 // ---------- eu ----------
 const lePrefs = p => { try { return JSON.parse(p.prefs || '{}') || {}; } catch { return {}; } };
-app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa) }));
+app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa), portal: await portal.acesso(req.email) }));
 // preferências de cada pessoa (como quer ver as tarefas: lista ou quadro), valem em qualquer computador
 const PREFS = { visao: ['lista', 'quadro'], visaoInicio: ['lista', 'quadro'], tema: ['auto', 'claro', 'escuro'] };
 app.put('/api/me/prefs', auth, express.json({ limit: '5kb' }), async (req, res) => {

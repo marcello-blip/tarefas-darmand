@@ -98,3 +98,26 @@ Para conferir qual versão está no ar: `GET /healthz`.
 | `public/login.html` | tela de entrada |
 | `public/marca/` | logo e ícones DARMAND |
 | `ferramentas/dev.js` | modo de teste no computador |
+
+## Gestão unificada: portal + tarefas
+
+O sistema passou a ter **módulos** numa barra lateral: **Início · Vendas · Produto · Pessoas · Tarefas** (e **Admin** para a diretoria). Cada módulo tem abas no topo.
+
+- **Vendas, Produto, Pessoas e Admin** são as telas do Portal do Gerente. A página do portal (`portal/painel-lojas.html`) abre dentro da Gestão, num quadro, sem o menu vermelho. Os dados ficam na tabela `docs` (coleção + id + JSON), no mesmo formato do portal antigo, e as rotas ficam em `/papi/...` (arquivo `portal.js`).
+- **Quem vê:** a diretoria (`ADMIN_EMAILS`) vê todas as lojas; quem está vinculado a uma loja vê os dados; os demais só veem Início e Tarefas.
+- **Tarefa diária:** continua gravando em `POST /api/ingest`, com o token `INGEST_TOKEN`. Só muda o endereço.
+- **Comunicado que vira tarefa:** em Pessoas → Comunicados, a diretoria marca **Exigir ação** e o prazo. Cada gerente recebe uma tarefa (prioridade Alta) e a diretoria acompanha por loja: quem concluiu, quem está fazendo, quem não começou. O botão **Lembrar quem não fez** sobe a tarefa para Urgente.
+- **Início:** mostra a loja no mês (ou a rede, para a diretoria), os comunicados sem "Ciente" e, para a diretoria, as lojas abaixo do ritmo com o botão **Plano de ação**.
+
+### Testar no computador
+
+`npm run dev` carrega os dados das lojas da pasta da tarefa diária (`%LOCALAPPDATA%\DarmandPainel\kit\export` e `kit\db`), quando ela existe. Entradas de teste: `gestor@darmand.com.br` (diretoria), `gerente@darmand.com.br` (Macapá) e `gerente2@darmand.com.br` (Marabá).
+
+### Ligar os dados das lojas em produção
+
+Os módulos do portal só aparecem quando existem dados de lojas. Há dois jeitos:
+
+1. **Rodar junto com o portal antigo (recomendado para começar):** crie a variável `PORTAL_DATABASE_URL` no serviço, com o endereço **público** do Postgres do portal antigo. A Gestão passa a ler e gravar os mesmos dados (vendas, metas, comunicados, vínculos de gerentes). Nada é copiado e a tarefa diária não muda.
+2. **Banco próprio (virada definitiva):** crie `INGEST_TOKEN`, envie os dados para `POST /api/ingest` e aponte a tarefa diária para este endereço.
+
+Quem é "diretoria" nos módulos do portal é quem está em `ADMIN_EMAILS` deste serviço.
