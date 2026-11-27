@@ -326,6 +326,24 @@ app.post('/api/google/sincronizar', auth, async (req, res) => {
   res.json({ ok: true, tarefas: await agenda.sincronizarPessoa(req.email) });
 });
 app.post('/api/google/desconectar', auth, async (req, res) => { await agenda.desconectar(req.email); cacheEventos.delete(req.email); res.json({ ok: true }); });
+// nova reunião pela plataforma: vai para a agenda de quem criou, com convites (o Google envia) e link do Meet
+const horaOk = h => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(h || ''));
+const emailValido = e => /^[^@\s,;]+@[^@\s,;]+\.[a-z]{2,}$/i.test(String(e || ''));
+app.post('/api/agenda/reunioes', auth, express.json({ limit: '20kb' }), async (req, res) => {
+  const b = req.body || {};
+  const titulo = txt(b.titulo, 200); if (!titulo) return res.status(400).json({ erro: 'Dê um título à reunião.' });
+  const data = dataOk(b.data); if (!data) return res.status(400).json({ erro: 'Escolha a data da reunião.' });
+  if (!horaOk(b.inicio) || !horaOk(b.fim)) return res.status(400).json({ erro: 'Escolha o horário de início e de fim.' });
+  const dataFim = b.fim > b.inicio ? data : somaDias(data, 1); // passou da meia-noite
+  if (b.fim === b.inicio) return res.status(400).json({ erro: 'O fim precisa ser depois do início.' });
+  const convidados = [...new Set((Array.isArray(b.convidados) ? b.convidados : []).map(e => String(e || '').trim().toLowerCase()).filter(e => e && e !== req.email))].slice(0, 50);
+  const ruim = convidados.find(e => !emailValido(e)); if (ruim) return res.status(400).json({ erro: `E-mail inválido: ${ruim}` });
+  try {
+    const r = await agenda.criarReuniao(req.email, { titulo, data, dataFim, inicio: b.inicio, fim: b.fim, convidados, local: txt(b.local, 300), descricao: txt(b.descricao, 3000), meet: b.meet !== false });
+    cacheEventos.delete(req.email);
+    res.json({ ok: true, ...r, convidados: convidados.length });
+  } catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+});
 // compromissos do Google Agenda de hoje até os próximos dias (para o Início). Guardados por 2 minutos para não pesar.
 const cacheEventos = new Map();
 app.get('/api/agenda/eventos', auth, async (req, res) => {
@@ -632,7 +650,8 @@ const EXEMPLO_DEV = h => ({ resumo: 'Exemplo de teste (sem chave da IA neste com
   tarefas: [
     { titulo: 'Primeira tarefa do exemplo', descricao: '', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: h, prazo: h, prioridade: 2 },
     { titulo: 'Segunda tarefa do exemplo', descricao: 'Detalhe de exemplo', responsavel: null, projeto_id: null, projeto_novo_ref: 'p1', inicio: null, prazo: null, prioridade: 3, recorrencia: 'semanal' },
-  ], lembretes: [{ texto: 'Lembrete de exemplo: ligar para o fornecedor', data: h, recorrencia: null }], duvidas: ['Este é um exemplo fixo: configure ANTHROPIC_API_KEY para a IA entender a narração de verdade.'] });
+  ], lembretes: [{ texto: 'Lembrete de exemplo: ligar para o fornecedor', data: h, recorrencia: null }],
+  reunioes: [{ titulo: 'Reunião de exemplo', data: h, hora_inicio: '14:00', hora_fim: '15:00', convidados: [], local: null, meet: true, descricao: '' }], duvidas: ['Este é um exemplo fixo: configure ANTHROPIC_API_KEY para a IA entender a narração de verdade.'] });
 
 app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) => {
   const texto = txt(req.body && req.body.texto, 8000);
@@ -699,7 +718,12 @@ app.post('/api/narrar', auth, express.json({ limit: '40kb' }), async (req, res) 
     t.responsavel = null;
   }
   const lembretes = (Array.isArray(r.lembretes) ? r.lembretes : []).slice(0, 30).map(l => ({ texto: txt(l.texto, 300), data: data(l.data), recorrencia: RECORRENCIAS[l.recorrencia] ? l.recorrencia : null })).filter(l => l.texto);
-  res.json({ resumo: txt(r.resumo, 400) || '', projetosNovos, tarefas, lembretes, duvidas });
+  const reunioes = (Array.isArray(r.reunioes) ? r.reunioes : []).slice(0, 10).map(x => ({
+    titulo: txt(x.titulo, 200), data: data(x.data), inicio: horaOk(x.hora_inicio) ? x.hora_inicio : null, fim: horaOk(x.hora_fim) ? x.hora_fim : null,
+    convidados: [...new Set((Array.isArray(x.convidados) ? x.convidados : []).map(e => String(e || '').toLowerCase()).filter(e => e && e !== req.email && (emails.has(e) || emailValido(e))))],
+    local: txt(x.local, 300), meet: x.meet !== false, descricao: txt(x.descricao, 3000) || '',
+  })).filter(x => x.titulo);
+  res.json({ resumo: txt(r.resumo, 400) || '', projetosNovos, tarefas, lembretes, reunioes, duvidas });
 });
 
 // tratador de erro: responde em vez de derrubar o processo

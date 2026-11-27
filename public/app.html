@@ -260,6 +260,10 @@ button.kpi:hover{border-color:var(--muted)}
 .recolhe[open]>summary::before{content:'▾'}
 .recolhe>summary .n{color:var(--muted);font-weight:500}
 .recolhe[open]>summary{margin-bottom:8px}
+.reu{display:grid;grid-template-columns:24px minmax(160px,1fr) 140px 100px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.reu input[type=text],.reu input[type=date],.reu input[type=time]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;min-width:0}
+.reu .det{grid-column:2/-1;font-size:12px;color:var(--muted);margin-top:-4px}
+@media (max-width:640px){.reu{grid-template-columns:24px 1fr 1fr}.reu .reu-tit{grid-column:2/-1}.reu input[type=date]{grid-column:2/-1}.reu .det{grid-column:1/-1}}
 /* início "meu dia" */
 .dia-topo{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start;margin-bottom:16px}
 .proximo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:14px}
@@ -308,6 +312,7 @@ button.kpi:hover{border-color:var(--muted)}
 .membros-acoes select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:220px;max-width:100%}
 .convites{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:6px 10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px}
 .convites label{display:flex;align-items:center;gap:6px;font-size:13.5px;padding:3px 0}
+.campo .convites input[type=checkbox]{width:16px;height:16px;flex:none;padding:0;accent-color:var(--brand)}
 .pisca{animation:pisca 1.2s}
 @keyframes pisca{0%,100%{box-shadow:var(--shadow)}30%{box-shadow:0 0 0 3px var(--brand)}}
 .lem-grupo{margin-top:8px}
@@ -795,6 +800,46 @@ async function capturaRapida(tipo) {
 }
 const addLembrete = () => capturaRapida('lembrete');
 
+// ---------------- nova reunião (vai para o Google Agenda com convites e Meet) ----------------
+function proximaMeiaHora() { const d = new Date(); d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0); return d; }
+const somaMin = (hm, m) => { const [h, mi] = hm.split(':').map(Number), t = (h * 60 + mi + m) % 1440; return pad(Math.floor(t / 60)) + ':' + pad(t % 60); };
+function janelaReuniao(pre = {}) {
+  const ag = S.agendaEv || {}, d0 = proximaMeiaHora();
+  const ini = pre.inicio || (pad(d0.getHours()) + ':' + pad(d0.getMinutes())), data = pre.data || ymd(d0);
+  const equipe = S.pessoas.filter(p => p.ativo && p.email !== S.me.email);
+  const marcados = new Set(pre.convidados || []);
+  const corpo = `
+    ${ag.conectado ? '' : '<div class="aviso">📅 Para criar reuniões, conecte primeiro o seu Google Agenda. <a href="/api/google/conectar">Conectar agora</a></div>'}
+    <label class="campo"><span>Assunto</span><input id="rTit" maxlength="200" value="${esc(pre.titulo || '')}" placeholder="Ex.: Alinhamento da vitrine de verão"></label>
+    <div class="duas">
+      <label class="campo"><span>Data</span><input type="date" id="rData" value="${esc(data)}"></label>
+      <div class="duas" style="gap:8px"><label class="campo"><span>Início</span><input type="time" id="rIni" value="${esc(ini)}"></label><label class="campo"><span>Fim</span><input type="time" id="rFim" value="${esc(pre.fim || somaMin(ini, 60))}"></label></div>
+    </div>
+    <div class="campo"><span>Convidar da equipe</span><div class="convites">${equipe.map(p => `<label><input type="checkbox" value="${esc(p.email)}" data-rconv ${marcados.has(p.email) ? 'checked' : ''}> ${esc(p.nome)}</label>`).join('') || '<span class="dica">Ninguém mais na equipe ainda.</span>'}</div></div>
+    <label class="campo"><span>Convidados de fora <span class="dica">(e-mails separados por vírgula)</span></span><input id="rFora" value="${esc((pre.convidados || []).filter(e => !equipe.some(p => p.email === e)).join(', '))}" placeholder="fornecedor@empresa.com.br"></label>
+    <div class="duas">
+      <label class="campo"><span>Local <span class="dica">(opcional)</span></span><input id="rLocal" maxlength="300" value="${esc(pre.local || '')}" placeholder="Ex.: Loja Centro"></label>
+      <label class="campo" style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="rMeet" ${pre.meet === false ? '' : 'checked'} style="width:18px;height:18px;accent-color:var(--brand)"> Criar link do Google Meet</label>
+    </div>
+    <label class="campo"><span>Pauta / descrição <span class="dica">(opcional)</span></span><textarea id="rDesc" maxlength="3000" style="min-height:70px">${esc(pre.descricao || '')}</textarea></label>
+    <p class="st" style="margin:0">A reunião entra na sua agenda e o Google envia o convite para cada convidado.</p>`;
+  const j = abreJanela('📅 Nova reunião', corpo, `<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="rSalva" ${ag.conectado ? '' : 'disabled'}>Criar e enviar convites</button>`);
+  j.querySelector('[data-fecha2]').onclick = fechaJanela;
+  j.querySelector('#rIni').onchange = e => { const f = j.querySelector('#rFim'); if (!f.dataset.mexeu) f.value = somaMin(e.target.value, 60); };
+  j.querySelector('#rFim').oninput = e => { e.target.dataset.mexeu = '1'; };
+  j.querySelector('#rSalva').onclick = async () => {
+    const convidados = [...j.querySelectorAll('[data-rconv]:checked')].map(x => x.value).concat($('#rFora').value.split(/[,;\s]+/).map(s => s.trim()).filter(Boolean));
+    const dados = { titulo: $('#rTit').value, data: $('#rData').value, inicio: $('#rIni').value, fim: $('#rFim').value, convidados, local: $('#rLocal').value, descricao: $('#rDesc').value, meet: $('#rMeet').checked };
+    if (!dados.titulo.trim()) { toast('Dê um assunto à reunião.', true); $('#rTit').focus(); return; }
+    const b = $('#rSalva'); b.disabled = true; b.textContent = 'Criando…';
+    try {
+      const r = await api('POST', '/api/agenda/reunioes', dados);
+      fechaJanela(); toast(`Reunião criada${r.convidados ? ` e ${r.convidados === 1 ? 'convite enviado' : r.convidados + ' convites enviados'}` : ''}. 📅`);
+      S.agendaEv = await api('GET', '/api/agenda/eventos?dias=7&atualizar=1').catch(() => S.agendaEv); desenha();
+    } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Criar e enviar convites'; }
+  };
+}
+
 // ---------------- Início: "Meu dia" (compromissos da agenda + tarefas + lembretes) ----------------
 const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 const diaDoEvento = e => e.diaInteiro ? e.inicio : ymd(new Date(e.inicio));
@@ -892,6 +937,7 @@ function vInicio() {
           <span class="captura-bt">
             <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você">+ Tarefa</button>
             <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota um lembrete (só você vê)">📌 Lembrete</button>
+            <button class="btn" data-reuniao title="Marca uma reunião no Google Agenda e convida as pessoas">📅 Reunião</button>
             <button class="btn" data-narrar title="Fale ou escreva várias coisas e a IA organiza">🎙</button>
           </span>
         </div>
@@ -900,7 +946,7 @@ function vInicio() {
     ${atrasadas.length ? `<details class="alerta-atraso" data-recolhe="atrasadas" ${localGet('abre.atrasadas') === '1' ? 'open' : ''}><summary>⚠️ Você tem <b>${plural(atrasadas.length, 'tarefa atrasada', 'tarefas atrasadas')}</b> <span class="st">ver</span></summary><div class="card lista">${atrasadas.map(linha).join('')}</div></details>` : ''}
     <div class="dia-grid">
       <section class="card bloco hoje">
-        <div class="bloco-cab"><h3>📅 Hoje</h3>${ag.conectado ? `<button class="btn peq" data-atualiza-agenda title="Buscar de novo no Google Agenda">↻</button>` : ''}</div>
+        <div class="bloco-cab"><h3>📅 Hoje</h3><span style="display:flex;gap:6px">${ag.conectado ? `<button class="btn peq" data-reuniao>+ Reunião</button><button class="btn peq" data-atualiza-agenda title="Buscar de novo no Google Agenda">↻</button>` : ''}</span></div>
         ${ag.erro ? `<div class="aviso">${esc(ag.erro)}</div>` : ''}
         ${blocoHoje}
       </section>
@@ -1272,21 +1318,32 @@ function revisaNarracao(p, textoOriginal) {
   const lems = (p.lembretes || []).map((l, i) => `<div class="lem" data-li="${i}"><input type="checkbox" checked data-lon style="width:18px;height:18px;accent-color:var(--brand)">
       <input type="text" value="${esc(l.texto)}" data-ltxt maxlength="300" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
       ${l.recorrencia ? `<span class="st">🔁 ${esc(RECORR_NOME[l.recorrencia])}</span>` : ''}${l.data ? `<span class="selo">${brData(l.data)}</span>` : ''}</div>`).join('');
-  const total = () => p.tarefas.length + (p.lembretes || []).length;
-  const rotulo = (nt, nl) => [nt ? `${nt} ${nt === 1 ? 'tarefa' : 'tarefas'}` : '', nl ? `${nl} ${nl === 1 ? 'lembrete' : 'lembretes'}` : ''].filter(Boolean).join(' e ');
+  const conectado = (S.agendaEv || {}).conectado;
+  const reus = (p.reunioes || []).map((r, i) => `<div class="reu" data-ri="${i}">
+      <input type="checkbox" ${conectado ? 'checked' : 'disabled'} data-ron style="width:18px;height:18px;accent-color:var(--brand)">
+      <input type="text" value="${esc(r.titulo)}" data-rk="titulo" maxlength="200" class="reu-tit">
+      <input type="date" value="${esc(r.data || '')}" data-rk="data"><input type="time" value="${esc(r.inicio || '')}" data-rk="inicio"><input type="time" value="${esc(r.fim || '')}" data-rk="fim">
+      <div class="det">${r.convidados.length ? '👥 ' + r.convidados.map(e => esc(nome(e))).join(', ') : 'Sem convidados'}${r.meet ? ' · 🎥 Meet' : ''}${r.local ? ' · 📍 ' + esc(r.local) : ''}</div>
+    </div>`).join('');
+  const total = () => p.tarefas.length + (p.lembretes || []).length + (conectado ? (p.reunioes || []).length : 0);
+  const rotulo = (nt, nl, nr = 0) => { const ps = [nt ? `${nt} ${nt === 1 ? 'tarefa' : 'tarefas'}` : '', nr ? `${nr} ${nr === 1 ? 'reunião' : 'reuniões'}` : '', nl ? `${nl} ${nl === 1 ? 'lembrete' : 'lembretes'}` : ''].filter(Boolean); return ps.length > 1 ? ps.slice(0, -1).join(', ') + ' e ' + ps.slice(-1) : (ps[0] || ''); };
   const corpo = `
     ${p.resumo ? `<div class="resumo-ia">✨ ${esc(p.resumo)}</div>` : ''}
     ${p.duvidas.length ? `<div class="duvidas"><b>Confira antes de criar:</b><ul>${p.duvidas.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
     ${novos}
     ${p.tarefas.length ? `<div class="prop cab"><span></span><span>Tarefa</span><span>Responsável</span><span>Projeto</span><span>Início</span><span>Prazo</span><span>Prioridade</span></div>${linhas}` : ''}
+    ${reus ? `<div class="secao" style="margin-top:16px"><h3>📅 Reuniões <span class="dica">vão para a sua agenda e o Google envia os convites</span></h3>
+      ${conectado ? '' : '<div class="aviso">Para criar reuniões, conecte seu Google Agenda no Início. As demais coisas podem ser criadas normalmente.</div>'}${reus}</div>` : ''}
     ${lems ? `<div class="secao" style="margin-top:16px"><h3>📌 Lembretes para o seu mural <span class="dica">🔒 só você vê</span></h3>${lems}</div>` : ''}
-    ${total() ? '' : '<div class="card vazio">A IA não encontrou tarefas nem lembretes nesta narração. Volte e descreva o que precisa ser feito.</div>'}`;
-  const j = abreJanela('Confira o que a IA entendeu', corpo, `<button class="btn esq" id="nVolta">‹ Voltar e editar a narração</button><button class="btn" data-fecha2>Cancelar</button>${total() ? `<button class="btn prim" id="nCria">Criar ${rotulo(p.tarefas.length, (p.lembretes || []).length)}</button>` : ''}`);
+    ${p.tarefas.length + (p.lembretes || []).length + (p.reunioes || []).length ? '' : '<div class="card vazio">A IA não encontrou tarefas, reuniões nem lembretes nesta narração. Volte e descreva o que precisa ser feito.</div>'}`;
+  const nR0 = conectado ? (p.reunioes || []).length : 0;
+  const j = abreJanela('Confira o que a IA entendeu', corpo, `<button class="btn esq" id="nVolta">‹ Voltar e editar a narração</button><button class="btn" data-fecha2>Cancelar</button>${total() ? `<button class="btn prim" id="nCria">Criar ${rotulo(p.tarefas.length, (p.lembretes || []).length, nR0)}</button>` : ''}`);
   j.querySelector('.janela').classList.add('larga');
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   j.querySelector('#nVolta').onclick = () => janelaNarrar(textoOriginal);
-  const conta = () => { const kt = j.querySelectorAll('[data-on]:checked').length, kl = j.querySelectorAll('[data-lon]:checked').length, b = j.querySelector('#nCria'); if (b) { b.textContent = kt + kl ? `Criar ${rotulo(kt, kl)}` : 'Nada marcado'; b.disabled = !(kt + kl); } };
+  const conta = () => { const kt = j.querySelectorAll('[data-on]:checked').length, kl = j.querySelectorAll('[data-lon]:checked').length, kr = j.querySelectorAll('[data-ron]:checked').length, b = j.querySelector('#nCria'); if (b) { b.textContent = kt + kl + kr ? `Criar ${rotulo(kt, kl, kr)}` : 'Nada marcado'; b.disabled = !(kt + kl + kr); } };
   j.addEventListener('change', e => {
+    if (e.target.matches('[data-ron]')) { e.target.closest('.reu').style.opacity = e.target.checked ? 1 : .45; conta(); }
     if (e.target.matches('[data-lon]')) { e.target.closest('.lem').style.opacity = e.target.checked ? 1 : .45; conta(); }
     if (e.target.matches('[data-on]')) { e.target.closest('.prop').classList.toggle('off', !e.target.checked); conta(); }
     if (e.target.matches('[data-pon]')) e.target.closest('.pnovo').style.opacity = e.target.checked ? 1 : .45;
@@ -1322,9 +1379,20 @@ function revisaNarracao(p, textoOriginal) {
       try { await api('POST', '/api/lembretes', { texto: el.querySelector('[data-ltxt]').value, data: l.data, recorrencia: l.recorrencia }); okL++; }
       catch (e) { falhas.push(`Lembrete: ${e.message}`); }
     }
+    // 4) reuniões marcadas (vão para o Google Agenda, com convites)
+    let okR = 0;
+    for (const el of j.querySelectorAll('.reu[data-ri]')) {
+      if (!el.querySelector('[data-ron]').checked) continue;
+      const r = p.reunioes[+el.dataset.ri], v = k => el.querySelector(`[data-rk="${k}"]`).value;
+      const ini = v('inicio'), fim = v('fim') || (ini ? somaMin(ini, 60) : '');
+      if (!v('data') || !ini) { falhas.push(`Reunião "${v('titulo')}": falta a data ou o horário`); continue; }
+      try { await api('POST', '/api/agenda/reunioes', { titulo: v('titulo'), data: v('data'), inicio: ini, fim, convidados: r.convidados, local: r.local, descricao: r.descricao, meet: r.meet }); okR++; }
+      catch (e) { falhas.push(`Reunião "${v('titulo')}": ${e.message}`); }
+    }
+    if (okR) S.agendaEv = await api('GET', '/api/agenda/eventos?dias=7&atualizar=1').catch(() => S.agendaEv);
     fechaJanela();
-    const feito = rotulo(ok, okL) || 'Nada';
-    if (falhas.length) toast(`${feito} ${ok + okL === 1 ? 'criado' : 'criados'}; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${feito} ${ok + okL === 1 ? 'criado' : 'criados'}. ✅`);
+    const feito = rotulo(ok, okL, okR) || 'Nada';
+    if (falhas.length) toast(`${feito} ${ok + okL + okR === 1 ? 'criado' : 'criados'}; ${falhas.length} com erro. ${falhas[0]}`, true); else toast(`${feito} ${ok + okL + okR === 1 ? 'criado' : 'criados'}. ✅`);
     const unico = Object.values(idDoNovo)[0];
     // só lembretes: volta para o mural; com tarefas: mostra no cronograma
     if (ok) { S.vista = 'cronograma'; S.projetoSel = null; S.gScroll = null; if (unico) S.g.proj = String(unico); } else S.vista = 'inicio';
@@ -1406,6 +1474,7 @@ main.addEventListener('click', e => {
   const ir = e.target.closest('[data-ir]');
   if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: ir.hasAttribute('data-eu') ? '_eu' : '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); window.scrollTo(0, 0); return; }
   const cap = e.target.closest('[data-captura]'); if (cap) { capturaRapida(cap.dataset.captura); return; }
+  if (e.target.closest('[data-reuniao]')) { const q = $('#qTxt'); janelaReuniao({ titulo: q ? q.value : '', data: ($('#qData') || {}).value || undefined }); return; }
   if (e.target.closest('[data-ir-cronograma]')) { S.vista = 'cronograma'; S.gScroll = null; desenha(); window.scrollTo(0, 0); return; }
   if (e.target.closest('[data-atualiza-agenda]')) { api('GET', '/api/agenda/eventos?dias=7&atualizar=1').then(a => { S.agendaEv = a; desenha(); toast('Agenda atualizada.'); }).catch(er => toast(er.message, true)); return; }
   if (e.target.closest('.ag-item a, .ag-abre')) return; // links da agenda abrem normalmente

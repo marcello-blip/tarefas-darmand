@@ -53,7 +53,7 @@ module.exports = function criaAgenda({ pool, clientId, clientSecret, segredo, do
   // ---------- acesso à API da agenda ----------
   const clientes = new Map();
   async function tokenDe(email) {
-    if (fakeBase) return 'fake';
+    if (fakeBase) return (await q('SELECT 1 FROM google_contas WHERE email=$1 AND erro IS NULL', [email]))[0] ? 'fake' : null; // modo de teste: só quem "conectou"
     let c = clientes.get(email);
     if (!c) {
       const r = await q('SELECT token FROM google_contas WHERE email=$1 AND erro IS NULL', [email]); if (!r[0]) return null;
@@ -173,9 +173,28 @@ module.exports = function criaAgenda({ pool, clientId, clientSecret, segredo, do
           diaInteiro, local: e.location || null, link: e.htmlLink || null, meet };
       });
   }
+  // cria uma reunião na agenda principal de quem pediu, com convidados (o Google envia os convites) e link do Meet
+  async function criarReuniao(email, r) {
+    const corpo = {
+      summary: r.titulo,
+      start: { dateTime: `${r.data}T${r.inicio}:00`, timeZone: 'America/Sao_Paulo' },
+      end: { dateTime: `${r.dataFim || r.data}T${r.fim}:00`, timeZone: 'America/Sao_Paulo' },
+      attendees: r.convidados.map(e => ({ email: e })),
+      reminders: { useDefault: true },
+    };
+    if (r.descricao) corpo.description = r.descricao + (appUrl ? `\n\n(Criada pelo sistema de Tarefas DARMAND: ${appUrl})` : '');
+    if (r.local) corpo.location = r.local;
+    if (r.meet) corpo.conferenceData = { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } } };
+    const q = `conferenceDataVersion=1&sendUpdates=${r.convidados.length ? 'all' : 'none'}`;
+    const res = await cal(email, 'POST', `/calendars/primary/events?${q}`, corpo);
+    if (res.semConta) { const e = new Error('Conecte seu Google Agenda para criar reuniões.'); e.status = 400; throw e; }
+    if (res.status !== 200 || !res.json) { const e = new Error('O Google Agenda não aceitou a reunião. Tente de novo.'); e.status = 502; throw e; }
+    const ev = res.json;
+    return { id: ev.id, link: ev.htmlLink || null, meet: ev.hangoutLink || null };
+  }
   const conectados = async () => new Set((await q('SELECT email FROM google_contas WHERE erro IS NULL')).map(r => r.email));
   // só para o modo de teste local: conecta sem passar pelo Google
   const conectarFalso = async email => { await pool.query('DELETE FROM google_contas WHERE email=$1', [email]); await pool.query('INSERT INTO google_contas (email, token) VALUES ($1,$2)', [email, cifra('falso')]); };
 
-  return { disponivel, init, urlConectar, retorno, tarefa, sincronizarPessoa, desconectar, status, conectados, conectarFalso, eventos };
+  return { disponivel, init, urlConectar, retorno, tarefa, sincronizarPessoa, desconectar, status, conectados, conectarFalso, eventos, criarReuniao };
 };
