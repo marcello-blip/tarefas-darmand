@@ -10,17 +10,27 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script>
+// aplica o tema escolhido (claro, escuro ou automático) antes de desenhar a página, para não piscar
+(function () {
+  var t = 'auto'; try { t = localStorage.getItem('tarefas.tema') || 'auto'; } catch (e) {}
+  var escuro = t === 'escuro' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
+})();
+</script>
 <style>
 :root{
   --brand:#9d162e;--brand-soft:#f6e8eb;--bg:#f5f4f2;--surface:#fff;--surface2:#faf9f8;--ink:#1d1d1b;--muted:#76757a;--line:#e7e5e2;
   --red:#c0392b;--red-soft:#fbeaea;--amber:#b7791f;--amber-soft:#fdf3e1;--blue:#2b6cb0;--blue-soft:#e8f0fa;--green:#2f855a;--green-soft:#e6f4ec;--gray-soft:#efeeec;
   --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05);
 }
-@media (prefers-color-scheme:dark){:root{
+/* tema: a pessoa escolhe claro, escuro ou automático; o script no topo da página põe data-tema="claro" ou "escuro" */
+:root{color-scheme:light}
+:root[data-tema="escuro"]{color-scheme:dark;
   --brand:#d0425c;--brand-soft:#3a1c22;--bg:#141414;--surface:#1f1f1f;--surface2:#242424;--ink:#f1f0ee;--muted:#a3a2a6;--line:#333;
   --red:#ef6b5e;--red-soft:#3b1f1c;--amber:#e0a84a;--amber-soft:#382c17;--blue:#6aa5e8;--blue-soft:#1b2a3b;--green:#5cc28a;--green-soft:#183027;--gray-soft:#2a2a2a;
   --shadow:none;
-}}
+}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;min-height:100vh}
@@ -34,6 +44,9 @@ header{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:
 .topo{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
 .logo img{width:28px;height:28px;border-radius:7px}
+/* peixe da marca sem fundo: o desenho recorta a cor (vinho no claro, branco no escuro) */
+.logo .peixe{display:block;width:46px;height:17px;background:var(--brand);-webkit-mask:url(/marca/peixe-branco.png) center/contain no-repeat;mask:url(/marca/peixe-branco.png) center/contain no-repeat}
+:root[data-tema="escuro"] .logo .peixe{background:#fff}
 nav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{border:0;background:none;padding:8px 12px;border-radius:8px;color:var(--muted);font-weight:500;white-space:nowrap}
@@ -52,6 +65,11 @@ nav button.ativo{background:var(--brand-soft);color:var(--brand)}
 .menu-eu .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px}
 .menu-eu .pop button:hover{background:var(--gray-soft)}
 .btn-eu{border:0;background:none;padding:0;border-radius:50%;display:grid}
+.menu-eu .pop{min-width:290px}
+header .menu-eu .pop{background:var(--solido);border-radius:16px}
+.menu-eu .pop .tema-op{display:flex;gap:4px;padding:2px 4px 4px;border:0;margin:0}
+.menu-eu .pop .tema-op button{flex:1;text-align:center;padding:7px 4px;border-radius:999px;font-size:12.5px;border:1px solid var(--line);white-space:nowrap}
+.menu-eu .pop .tema-op button.ativo{background:var(--brand-soft);color:var(--brand);border-color:transparent;font-weight:600}
 .av{width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:600;color:#fff;flex:none;overflow:hidden;object-fit:cover;border:0;padding:0}
 .av.p{width:24px;height:24px;font-size:10px}
 .av.g{width:40px;height:40px;font-size:14px}
@@ -446,12 +464,12 @@ button.kpi:hover{border-color:var(--muted)}
   --shadow:0 10px 30px rgba(40,40,90,.08),0 1px 2px rgba(40,40,90,.06);
   --raio:20px;
 }
-@media (prefers-color-scheme:dark){:root{
+:root[data-tema="escuro"]{
   --bg:#0c0b12;--surface:rgba(34,32,44,.55);--surface2:rgba(255,255,255,.045);--line:rgba(255,255,255,.085);--gray-soft:rgba(255,255,255,.07);
   --brand-soft:rgba(208,66,92,.18);--red-soft:rgba(239,107,94,.15);--amber-soft:rgba(224,168,74,.15);--blue-soft:rgba(106,165,232,.15);--green-soft:rgba(92,194,138,.14);
   --vidro-borda:rgba(255,255,255,.12);--vidro-brilho:rgba(255,255,255,.16);--solido:#17161f;--campo:rgba(0,0,0,.28);
   --shadow:0 12px 34px rgba(0,0,0,.38);
-}}
+}
 body{background:var(--bg);background-attachment:fixed}
 /* fundo: manchas de cor desfocadas, fixas atrás de tudo */
 body::before{content:'';position:fixed;inset:-10%;z-index:-1;pointer-events:none;filter:blur(60px) saturate(130%);
@@ -461,12 +479,12 @@ body::before{content:'';position:fixed;inset:-10%;z-index:-1;pointer-events:none
     radial-gradient(40% 46% at 70% 92%,rgba(140,90,220,.22),transparent 70%),
     radial-gradient(30% 34% at 20% 85%,rgba(40,170,160,.16),transparent 70%),
     linear-gradient(180deg,#f4f3f9,#eceef6)}
-@media (prefers-color-scheme:dark){body::before{background:
+:root[data-tema="escuro"] body::before{background:
     radial-gradient(38% 42% at 12% 8%,rgba(190,40,70,.36),transparent 70%),
     radial-gradient(34% 40% at 88% 14%,rgba(60,110,230,.30),transparent 70%),
     radial-gradient(40% 46% at 70% 92%,rgba(130,80,220,.28),transparent 70%),
     radial-gradient(30% 34% at 20% 85%,rgba(30,150,140,.18),transparent 70%),
-    linear-gradient(180deg,#0e0d15,#0a0a10)}}
+    linear-gradient(180deg,#0e0d15,#0a0a10)}
 /* superfícies de vidro */
 .vidro,header .topo,.card,.janela,.captura,.coluna,.recolhe>summary,.menu-eu .pop,.chip-kpi,.alerta-atraso>summary,.kpi,.proximo,.toast{
   background:var(--surface);border:1px solid var(--vidro-borda);
@@ -482,12 +500,12 @@ header{background:transparent;border:0;padding:10px 12px 0;top:0}
 header .topo{border-radius:22px;padding:8px 10px 8px 14px}
 nav button{border-radius:999px;padding:7px 14px}
 nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0 1px 0 var(--vidro-brilho),0 2px 8px rgba(0,0,0,.08)}
-@media (prefers-color-scheme:dark){nav button.ativo{background:rgba(255,255,255,.10);color:#fff}}
+:root[data-tema="escuro"] nav button.ativo{background:rgba(255,255,255,.10);color:#fff}
 /* botões em pílula */
 .btn{border-radius:999px;background:var(--campo);border:1px solid var(--vidro-borda);box-shadow:inset 0 1px 0 var(--vidro-brilho)}
 .btn:hover{background:var(--surface)}
 .btn.prim{background:linear-gradient(180deg,#c22a46,#9d162e);border-color:rgba(255,255,255,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(157,22,46,.30)}
-@media (prefers-color-scheme:dark){.btn.prim{background:linear-gradient(180deg,#e0566f,#b4203d)}}
+:root[data-tema="escuro"] .btn.prim{background:linear-gradient(180deg,#e0566f,#b4203d)}
 .alterna{border-radius:999px;border:1px solid var(--vidro-borda);background:var(--campo)}
 .alterna button{background:transparent}
 .alterna button.ativo{background:var(--surface);box-shadow:inset 0 1px 0 var(--vidro-brilho)}
@@ -522,19 +540,19 @@ nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0
 /* sem desfoque disponível ou pedindo menos transparência: superfícies sólidas */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   :root{--surface:#ffffff;--surface2:#f7f7fa}
-  @media (prefers-color-scheme:dark){:root{--surface:#1f1e27;--surface2:#24232c}}
+  :root[data-tema="escuro"]{--surface:#1f1e27;--surface2:#24232c}
 }
 @media (prefers-reduced-transparency:reduce){
   :root{--surface:#ffffff;--surface2:#f7f7fa;--campo:#ffffff}
   body::before{display:none}
 }
-@media (prefers-reduced-transparency:reduce) and (prefers-color-scheme:dark){:root{--surface:#1f1e27;--surface2:#24232c;--campo:#15141b}}
+@media (prefers-reduced-transparency:reduce){:root[data-tema="escuro"]{--surface:#1f1e27;--surface2:#24232c;--campo:#15141b}}
 </style>
 </head>
 <body>
 <header>
   <div class="topo">
-    <div class="logo"><img src="/marca/icone-64.png" alt=""><span>Tarefas</span></div>
+    <div class="logo"><span class="peixe" role="img" aria-label="DARMAND"></span><span>Tarefas</span></div>
     <nav id="nav">
       <button data-v="inicio" class="ativo">Início</button>
       <button data-v="tarefas">Tarefas</button>
@@ -603,7 +621,16 @@ async function carrega() {
   // como cada pessoa prefere ver as tarefas (salvo na conta dela)
   if (!S.modo) S.modo = (me.prefs && me.prefs.visao) || 'lista';
   if (!S.modoInicio) S.modoInicio = (me.prefs && me.prefs.visaoInicio) || 'lista';
+  if (me.prefs && me.prefs.tema && me.prefs.tema !== temaEscolhido()) aplicaTema(me.prefs.tema); // vale em qualquer computador
 }
+// tema: 'auto' segue o computador/celular; a escolha fica na conta da pessoa e também neste navegador (para abrir já certo)
+const temaEscolhido = () => localGet('tema') || 'auto';
+function aplicaTema(escolha) {
+  localSet('tema', escolha);
+  const escuro = escolha === 'escuro' || (escolha === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
+}
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (temaEscolhido() === 'auto') aplicaTema('auto'); }); } catch {}
 function salvaPref(chave, valor) { api('PUT', '/api/me/prefs', { [chave]: valor }).then(p => { S.me.prefs = p; }).catch(() => {}); }
 async function recarrega() { try { await carrega(); desenha(); } catch (e) { if (e.message !== 'login') toast(e.message, true); } }
 
@@ -1551,7 +1578,10 @@ $('#btnEu').onclick = e => { e.stopPropagation(); const p = $('#popEu'), ag = S.
     ? `<div style="border-bottom:0;margin:0;padding-bottom:2px">📅 Google Agenda conectado<br><small>${ag.eventos} ${ag.eventos === 1 ? 'tarefa' : 'tarefas'} na sua agenda</small></div>
        <button id="agSinc">Sincronizar agora</button><button id="agDesc">Desconectar Google Agenda</button><hr style="border:0;border-top:1px solid var(--line);margin:4px 0">`
     : `<button id="agCon">📅 ${ag.erro ? 'Reconectar' : 'Conectar'} Google Agenda</button>${ag.erro ? `<div style="color:var(--red);border:0">${esc(ag.erro)}</div>` : ''}<hr style="border:0;border-top:1px solid var(--line);margin:4px 0">`;
-  p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div>${agHtml}<button id="sair">Sair</button>`;
+  const tm = temaEscolhido();
+  const temaHtml = `<div style="border-bottom:0;margin:0;padding-bottom:4px">Aparência</div><div class="tema-op">${[['claro', '☀️ Claro'], ['escuro', '🌙 Escuro'], ['auto', '🖥 Automático']].map(([k, n]) => `<button data-tema-op="${k}" class="${tm === k ? 'ativo' : ''}">${n}</button>`).join('')}</div><hr style="border:0;border-top:1px solid var(--line);margin:6px 0">`;
+  p.innerHTML = `<div>${esc(S.me.nome)}<br>${esc(S.me.email)}${S.me.gestor ? '<br><b>Gestor</b>' : ''}</div>${temaHtml}${agHtml}<button id="sair">Sair</button>`;
+  p.querySelectorAll('[data-tema-op]').forEach(b => b.onclick = ev => { ev.stopPropagation(); aplicaTema(b.dataset.temaOp); salvaPref('tema', b.dataset.temaOp); p.querySelectorAll('[data-tema-op]').forEach(x => x.classList.toggle('ativo', x === b)); });
   p.classList.toggle('oculto'); $('#sair').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; };
   const con = $('#agCon'); if (con) con.onclick = () => { location.href = '/api/google/conectar'; };
   const sinc = $('#agSinc'); if (sinc) sinc.onclick = async () => { sinc.disabled = true; sinc.textContent = 'Sincronizando…'; try { const r = await api('POST', '/api/google/sincronizar'); toast(`Agenda atualizada (${r.tarefas} ${r.tarefas === 1 ? 'tarefa conferida' : 'tarefas conferidas'}).`); await recarrega(); } catch (er) { toast(er.message, true); } p.classList.add('oculto'); };

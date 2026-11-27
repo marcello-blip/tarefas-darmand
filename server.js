@@ -256,7 +256,7 @@ app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(p
 const lePrefs = p => { try { return JSON.parse(p.prefs || '{}') || {}; } catch { return {}; } };
 app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa) }));
 // preferências de cada pessoa (como quer ver as tarefas: lista ou quadro), valem em qualquer computador
-const PREFS = { visao: ['lista', 'quadro'], visaoInicio: ['lista', 'quadro'] };
+const PREFS = { visao: ['lista', 'quadro'], visaoInicio: ['lista', 'quadro'], tema: ['auto', 'claro', 'escuro'] };
 app.put('/api/me/prefs', auth, express.json({ limit: '5kb' }), async (req, res) => {
   const p = lePrefs(req.pessoa), b = req.body || {};
   for (const [k, ok] of Object.entries(PREFS)) if (b[k] !== undefined && ok.includes(b[k])) p[k] = b[k];
