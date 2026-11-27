@@ -969,13 +969,13 @@ function rotuloDia(s) {
   const t = new Date(s + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '').replace(' de ', ' ');
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
-function itemEvento(e) {
+function itemEvento(e, ehProximo) {
   const agora = Date.now(), ini = e.diaInteiro ? null : new Date(e.inicio).getTime(), fim = e.diaInteiro ? null : new Date(e.fim).getTime();
   const acontecendo = ini && ini <= agora && agora < fim, passou = fim && fim <= agora;
   return `<div class="ag-item ${passou ? 'passou' : ''} ${acontecendo ? 'agora' : ''}">
     <span class="ag-hora">${e.diaInteiro ? 'dia todo' : hhmm(e.inicio)}</span>
-    <span class="ag-tit"><b>${esc(e.titulo)}</b>${e.local ? `<small>📍 ${esc(e.local)}</small>` : ''}${acontecendo ? '<small class="ag-ja">● acontecendo agora</small>' : ''}</span>
-    ${e.meet && !passou ? `<a class="btn peq ${acontecendo ? 'prim' : ''}" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a>` : e.link ? `<a class="ag-abre" href="${esc(e.link)}" target="_blank" rel="noopener" title="Abrir no Google Agenda">↗</a>` : ''}
+    <span class="ag-tit"><b>${esc(e.titulo)}</b>${e.local ? `<small>📍 ${esc(e.local)}</small>` : ''}${acontecendo ? '<small class="ag-ja">● acontecendo agora</small>' : ehProximo ? `<small class="ag-ja">⏰ próximo · ${(m => m < 60 ? `em ${m} min` : `em ${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`)(Math.max(1, Math.round((ini - agora) / 60000)))}</small>` : ''}</span>
+    ${e.meet && !passou ? `<a class="btn peq ${acontecendo || ehProximo ? 'prim' : ''}" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a>` : e.link ? `<a class="ag-abre" href="${esc(e.link)}" target="_blank" rel="noopener" title="Abrir no Google Agenda">↗</a>` : ''}
   </div>`;
 }
 function itemTarefa(t) {
@@ -1026,7 +1026,7 @@ function vInicio() {
     ? `<div class="ag-conectar">📅 <span>Conecte seu Google Agenda para ver suas reuniões aqui, junto com as tarefas.</span><a class="btn peq prim" href="/api/google/conectar">Conectar</a></div>` : '';
   // hoje
   const blocoHoje = `
-    ${evHoje.length ? `<div class="ag-sec"><div class="ag-st">Compromissos</div>${evHoje.map(itemEvento).join('')}</div>` : ''}
+    ${evHoje.length ? `<div class="ag-sec"><div class="ag-st">Compromissos</div>${evHoje.map(e => itemEvento(e, prox && e.id === prox.id && new Date(e.inicio).getTime() > Date.now())).join('')}</div>` : ''}
     ${tarefasHoje.length || lemHoje.length ? `<div class="ag-sec"><div class="ag-st">Para fazer hoje</div>${tarefasHoje.map(itemTarefa).join('')}${lemHoje.sort((a, b) => a.data.localeCompare(b.data)).map(itemLembrete).join('')}</div>` : ''}
     ${!evHoje.length && !tarefasHoje.length && !lemHoje.length ? `<div class="vazio-p" style="padding:14px 4px">Nada para hoje. ${minhas.length ? 'Veja o que vem pela frente ao lado.' : 'Anote algo na caixa acima ou use o 🎙.'}</div>` : ''}
     ${conectarAgenda}`;
@@ -1048,7 +1048,6 @@ function vInicio() {
       <div class="saudacao">
         <h2>${saud}, ${esc(primeiroNome(eu))}! 👋</h2>
         <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${resumo}</p>
-        ${proxTxt}
       </div>
       <div class="captura card">
         <input id="qTxt" maxlength="300" placeholder="Anotar algo… (Enter)" autocomplete="off">
