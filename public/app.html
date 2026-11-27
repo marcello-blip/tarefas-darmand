@@ -619,6 +619,35 @@ main{width:100%}
 .com-lin b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .com-lin:hover b{color:var(--brand)}
 .orig{color:var(--brand);font-weight:600}
+/* Admin → Pessoas e acessos */
+.ac-niveis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0 16px}
+.ac-niv{padding:14px 16px}
+.ac-niv b{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ac-niv b span{color:var(--muted);font-weight:500;font-size:13px}
+.ac-niv p{margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.ac-lin{display:grid;grid-template-columns:minmax(200px,1.1fr) 170px 158px minmax(262px,1fr) 142px;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.ac-lin:first-child{border-top:0}
+.ac-lin.inativo>:not(.ac-tg){opacity:.5}
+.ac-quem{display:flex;gap:10px;align-items:center;min-width:0}
+.ac-quem>div{min-width:0}
+.ac-quem b,.ac-quem small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-quem small{color:var(--muted);font-size:12px}
+.ac-c{min-width:0}
+.ac-c>span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.ac-c select{width:100%;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:var(--campo);font:inherit;color:inherit}
+.ac-c select.falta{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber-soft)}
+.ac-mods{display:flex;gap:6px;flex-wrap:wrap}
+.ac-mods label{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:var(--campo);font-size:12px;cursor:pointer;white-space:nowrap}
+.ac-mods label.on{background:var(--brand-soft);border-color:transparent;color:var(--brand);font-weight:600}
+.ac-mods input,.ac-tg input{width:15px;height:15px;accent-color:var(--brand);margin:0}
+.ac-mods label.travado{opacity:.6;cursor:default}
+.ac-tg{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.ac-tg label{display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+.ac-aviso{grid-column:1/-1;color:var(--amber);font-size:12.5px;font-weight:600;margin-top:-4px}
+.ac-novo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;margin-bottom:12px}
+.ac-novo input{flex:1 1 180px;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--campo);font:inherit;color:inherit}
+@media (max-width:1180px){.ac-lin{grid-template-columns:1fr 1fr}.ac-quem,.ac-mods-c{grid-column:1/-1}.ac-niveis{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.ac-lin{grid-template-columns:1fr}.ac-niveis{grid-template-columns:1fr}.ac-tg{flex-direction:row;gap:14px;flex-wrap:wrap}}
 /* abas sempre numa linha própria, embaixo do título; se não couberem numa linha, quebram em duas (nunca ficam escondidas) */
 .topo{flex-wrap:wrap;gap:8px 12px}
 nav#nav{order:3;flex:1 1 100%;flex-wrap:wrap;overflow:visible;gap:4px;padding-top:6px;border-top:1px solid var(--line)}
@@ -667,7 +696,7 @@ nav#nav:empty{display:none}
 
 <script>
 // ---------------- estado ----------------
-const S = { me: null, pessoas: [], projetos: [], tarefas: [], lembretes: [], vista: 'inicio', pmod: null, pv: { vendas: 'visao', produto: 'demanda', pessoas: 'comunicados', admin: 'admin' }, portal: null, resumo: null, modo: null, modoInicio: null, verFeitos: false,
+const S = { me: null, pessoas: [], projetos: [], tarefas: [], lembretes: [], vista: 'inicio', pmod: null, pv: { vendas: 'visao', produto: 'demanda', pessoas: 'comunicados' }, portal: null, resumo: null, acessos: null, acDraft: {}, acQ: '', modo: null, modoInicio: null, verFeitos: false,
   f: { q: '', resp: '', proj: '', sit: 'abertas', prazo: '' }, mes: null, diaSel: null,
   g: { agrupar: localGet('agrupar') || 'projeto', escala: localGet('escala') || 'semanas', resp: '', proj: '', concluidas: false }, gScroll: null,
   pf: 'abertos', projetoSel: null };
@@ -833,23 +862,26 @@ const ICO = {
   mais: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
 // quem tem acesso aos módulos do portal: a diretoria e quem está vinculado a uma loja
-const temPortal = () => !!(S.me && S.me.portal && S.me.portal.dados && (S.me.portal.admin || S.me.portal.vinculo));
-const diretoria = () => temPortal() && !!S.me.portal.admin;
+// níveis de acesso: o servidor diz quais módulos a pessoa vê (Vendas, Produto, Pessoas) e se ela é diretoria ou administrador geral
+const meusMods = () => (S.me && S.me.portal && S.me.portal.dados && S.me.portal.modulos) || [];
+const temPortal = () => meusMods().length > 0;
+const diretoria = () => temPortal() && !!S.me.portal.diretoria;
+const adminGeral = () => !!(S.me && S.me.portal && S.me.portal.admin);
 function modulos() {
   const d = diretoria(), m = [{ id: 'inicio', nome: 'Início' }];
-  if (temPortal()) m.push(
-    { id: 'vendas', nome: 'Vendas', portal: true, abas: [['visao', 'Visão geral'], ['vendas', 'Vendas'], ['metas', 'Metas'], ['ano', 'Ano'], ['ese', 'E se?'], ['campanhas', 'Campanhas'], ['rede', 'Grupo']] },
-    { id: 'produto', nome: 'Produto', portal: true, abas: [['demanda', 'Demanda e produtos'], ['produto', 'Ficha do produto'], ['estoque', 'Estoque']] },
-    { id: 'pessoas', nome: 'Pessoas', portal: true, abas: [['comunicados', 'Comunicados'], ['equipe', 'Vendedores'], ['time', d ? 'Contexto das equipes' : 'Minha equipe'], ['perfil', d ? 'Personagens' : 'Meu personagem']] });
+  const tem = meusMods(), vistas = (S.me.portal && S.me.portal.vistas) || [];
+  if (tem.includes('vendas')) m.push({ id: 'vendas', nome: 'Vendas', portal: true, abas: [['visao', 'Visão geral'], ['vendas', 'Vendas'], ['metas', 'Metas'], ['ano', 'Ano'], ['ese', 'E se?'], ['campanhas', 'Campanhas'], ['rede', 'Grupo']] });
+  if (tem.includes('produto')) m.push({ id: 'produto', nome: 'Produto', portal: true, abas: [['demanda', 'Demanda e produtos'], ['produto', 'Ficha do produto'], ['estoque', 'Estoque']] });
+  if (tem.includes('pessoas')) m.push({ id: 'pessoas', nome: 'Pessoas', portal: true, abas: [['comunicados', 'Comunicados'], ['equipe', 'Vendedores'], ['time', d ? 'Contexto das equipes' : 'Minha equipe'], ['perfil', d ? 'Personagens' : 'Meu personagem']].filter(a => vistas.includes(a[0])) });
   m.push({ id: 'tarefas', nome: 'Tarefas', abas: [['tarefas', 'Tarefas'], ['cronograma', 'Cronograma'], ['prazos', 'Prazos'], ['projetos', 'Projetos'], ['equipe', 'Equipe']] });
-  if (d) m.push({ id: 'admin', nome: 'Admin', portal: true, fim: true, abas: [['admin', 'Lojas e gerentes']] });
+  if (adminGeral()) m.push({ id: 'admin', nome: 'Admin', fim: true, abas: [['acessos', 'Pessoas e acessos']] });
   return m;
 }
-const modAtual = () => { const ms = modulos(); return (S.pmod && ms.find(m => m.id === S.pmod)) || ms.find(m => m.id === (S.vista === 'inicio' ? 'inicio' : 'tarefas')); };
+const modAtual = () => { const ms = modulos(); if (S.vista === 'acessos' && !adminGeral()) S.vista = 'inicio'; return (S.pmod && ms.find(m => m.id === S.pmod)) || ms.find(m => m.id === (S.vista === 'inicio' ? 'inicio' : S.vista === 'acessos' ? 'admin' : 'tarefas')); };
 function vaiModulo(id) {
   const m = modulos().find(x => x.id === id); if (!m) return;
   fechaMais();
-  if (m.portal) S.pmod = id; else { S.pmod = null; if (id === 'inicio') S.vista = 'inicio'; else if (S.vista === 'inicio') S.vista = 'tarefas'; }
+  if (m.portal) S.pmod = id; else { S.pmod = null; if (id === 'inicio') S.vista = 'inicio'; else if (id === 'admin') { S.vista = 'acessos'; S.acessos = null; } else if (S.vista === 'inicio' || S.vista === 'acessos') S.vista = 'tarefas'; }
   S.projetoSel = null; S.gScroll = null; desenha(); window.scrollTo(0, 0);
 }
 function mandaPortal(msg) { const f = document.getElementById('portal'); if (f && f.dataset.on && f.contentWindow) f.contentWindow.postMessage(msg, location.origin); }
@@ -865,6 +897,7 @@ function desenhaCasca() {
   $('#barra').style.gridTemplateColumns = `repeat(${ordemCel.length + (resto.length ? 1 : 0)}, minmax(0, 1fr))`;
   $('#barra').innerHTML = ordemCel.map(id => bt(ms.find(x => x.id === id))).join('') + (resto.length ? `<button class="mod ${resto.some(x => x.id === m.id) ? 'ativo' : ''}" data-mais><svg viewBox="0 0 24 24" aria-hidden="true">${ICO.mais}</svg>Mais</button>` : '');
   $('#modTit').textContent = m.nome;
+  if (m.portal && !m.abas.some(a => a[0] === S.pv[m.id])) S.pv[m.id] = m.abas[0][0];
   const atual = m.portal ? S.pv[m.id] : S.vista;
   $('#nav').innerHTML = (m.abas || []).map(([k, n]) => `<button ${m.portal ? 'data-p' : 'data-v'}="${k}" class="${k === atual ? 'ativo' : ''}">${esc(n)}</button>`).join('');
   // loja: a diretoria escolhe; o gerente vê a sua
@@ -912,7 +945,7 @@ function desenha() {
   if (modAtual().portal) { mostraPortal(); return; }
   $('#portalBox').classList.add('oculto'); $('#main').classList.remove('oculto'); $('#casca').classList.remove('no-portal');
   const g = $('.gantt'); if (g) S.gScroll = g.scrollLeft;
-  $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, cronograma: vCronograma, prazos: vPrazos, projetos: () => S.projetoSel ? vProjeto() : vProjetos(), equipe: vEquipe }[S.vista]();
+  $('#main').innerHTML = { inicio: vInicio, tarefas: vTarefas, cronograma: vCronograma, prazos: vPrazos, projetos: () => S.projetoSel ? vProjeto() : vProjetos(), equipe: vEquipe, acessos: vAcessos }[S.vista]();
   const g2 = $('.gantt');
   if (g2) { if (S.gScroll == null) rolaHoje(); else g2.scrollLeft = S.gScroll; }
 }
@@ -1244,7 +1277,7 @@ function vInicio() {
     const tot = rs.lojas.reduce((a, l) => ({ v: a.v + l.vendido, m: a.m + l.meta, e: a.e + l.esperado }), { v: 0, m: 0, e: 0 });
     const pct = tot.m ? tot.v / tot.m : 0, ritmo = tot.e ? tot.v / tot.e : null, mesNome = MESES[+rs.mes.slice(5) - 1];
     const ult = rs.lojas.map(l => l.ultimoDia && l.ultimoDia.dia).filter(Boolean).sort().pop();
-    cartaoLoja = `<div class="card bloco"><div class="bloco-cab"><h3>🏬 ${rs.admin ? 'A rede em ' + mesNome : esc(rs.lojas[0].nome) + ' em ' + mesNome}</h3><button class="btn peq" data-ir-portal="vendas:visao">ver vendas</button></div>
+    cartaoLoja = `<div class="card bloco"><div class="bloco-cab"><h3>🏬 ${rs.lojas.length > 1 ? 'A rede em ' + mesNome : esc(rs.lojas[0].nome) + ' em ' + mesNome}</h3><button class="btn peq" data-ir-portal="vendas:visao">ver vendas</button></div>
       <div class="loja-num"><b>${R$(tot.v)}</b><span>meta ${tot.m ? R$(tot.m) : 'não definida'}</span></div>
       ${tot.m ? `<div class="loja-barra"><i class="${ritmo != null && ritmo < 1 ? 'atras' : ''}" style="width:${Math.min(100, pct * 100).toFixed(0)}%"></i></div>` : ''}
       <div class="loja-nota">${tot.m ? `<b>${Math.round(pct * 100)}%</b> da meta do mês` : ''}${ritmo != null ? ` · ${ritmo >= 1 ? 'no ritmo' : `${Math.round((1 - ritmo) * 100)}% abaixo do ritmo`}` : ''}${ult ? ` · vendas até ${brData(ult).slice(0, 5)}` : ''}</div></div>`;
@@ -1362,6 +1395,56 @@ function vPrazos() {
     </div>`;
 }
 
+// ---------------- Admin: pessoas e acessos (só o administrador geral) ----------------
+const NIVEL = { admin: ['Administrador geral', 'Vê tudo e define o acesso de todo mundo.'], diretoria: ['Diretoria', 'Vê todas as lojas, escreve comunicados e define metas.'],
+  gerente: ['Gerente de loja', 'Vê a própria loja em detalhe e a comparação com as outras. Recebe as tarefas dos comunicados.'], equipe: ['Equipe', 'Só tarefas. Dá para liberar módulos apenas para consulta.'] };
+const MODS_NOME = { vendas: 'Vendas', produto: 'Produto', pessoas: 'Pessoas' };
+// o que está escolhido na linha (rascunho enquanto falta algo, senão o que veio do servidor)
+const acEstado = p => ({ nivel: p.nivel, loja: p.loja || '', modulos: p.modulos.slice(), gestor: p.gestor, ativo: p.ativo, ...(S.acDraft[p.email] || {}) });
+const acFalta = e => e.nivel === 'gerente' && (!e.loja || e.loja === 'todas') ? 'Escolha a loja deste gerente para salvar.' : e.nivel === 'equipe' && e.modulos.length && !e.loja ? 'Escolha de qual loja a pessoa vê os dados (ou todas as lojas) para salvar.' : '';
+function vAcessos() {
+  const A = S.acessos;
+  if (!A) { api('GET', '/api/acessos').then(a => { S.acessos = a; if (S.vista === 'acessos') desenha(); }).catch(e => toast(e.message, true)); return '<div class="carregando">Carregando…</div>'; }
+  const q = S.acQ.trim().toLowerCase(), ord = { admin: 0, diretoria: 1, gerente: 2, equipe: 3 };
+  const ps = A.pessoas.filter(p => !q || p.nome.toLowerCase().includes(q) || p.email.includes(q)).sort((a, b) => (b.ativo - a.ativo) || ord[a.nivel] - ord[b.nivel] || a.nome.localeCompare(b.nome));
+  const conta = k => A.pessoas.filter(p => p.ativo && p.nivel === k).length;
+  const linhaAc = p => {
+    const e = acEstado(p), falta = acFalta(e), todas = e.nivel === 'admin' || e.nivel === 'diretoria', trava = p.fixo ? 'disabled' : '';
+    const lojaSel = todas ? '<b style="display:block;padding:7px 0">Todas as lojas</b>'
+      : `<select data-ac-loja class="${falta ? 'falta' : ''}" ${trava}><option value="">${e.nivel === 'equipe' ? 'Nenhuma' : 'Escolha…'}</option>${A.lojas.map(l => `<option value="${esc(l.id)}" ${l.id === e.loja ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}${e.nivel === 'equipe' ? `<option value="todas" ${e.loja === 'todas' ? 'selected' : ''}>Todas as lojas (só consulta)</option>` : ''}</select>`;
+    return `<div class="ac-lin ${e.ativo ? '' : 'inativo'}" data-ac="${esc(p.email)}">
+      <div class="ac-quem">${avatar(p.email)}<div><b>${esc(p.nome)}${p.fixo ? ' <span class="tag">fixo</span>' : ''}</b><small>${esc(p.email)}${p.cargo ? ' · ' + esc(p.cargo) : ''} · ${p.ultimoAcesso ? 'entrou ' + quando(p.ultimoAcesso) : 'ainda não entrou'}</small></div></div>
+      <label class="ac-c"><span>Nível</span><select data-ac-nivel ${trava}>${Object.entries(NIVEL).map(([k, [n]]) => `<option value="${k}" ${k === e.nivel ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label class="ac-c"><span>Loja</span>${lojaSel}</label>
+      <div class="ac-c ac-mods-c"><span>Módulos além de Tarefas</span><div class="ac-mods">${Object.entries(MODS_NOME).map(([k, n]) => { const on = e.nivel === 'admin' || e.modulos.includes(k), tr = p.fixo || e.nivel === 'admin'; return `<label class="${on ? 'on' : ''} ${tr ? 'travado' : ''}"><input type="checkbox" data-ac-mod="${k}" ${on ? 'checked' : ''} ${tr ? 'disabled' : ''}>${n}</label>`; }).join('')}</div></div>
+      <div class="ac-c ac-tg"><label title="Pode editar e aprovar qualquer tarefa que enxerga e cadastrar pessoas"><input type="checkbox" data-ac-gestor ${e.gestor || e.nivel === 'admin' ? 'checked' : ''} ${p.fixo || e.nivel === 'admin' ? 'disabled' : ''}>Gestor de tarefas</label>
+        <label title="Sem isso a pessoa não consegue entrar"><input type="checkbox" data-ac-ativo ${e.ativo ? 'checked' : ''} ${trava}>Pode entrar</label></div>
+      ${falta ? `<div class="ac-aviso">⚠ ${falta}</div>` : ''}
+    </div>`;
+  };
+  return `<h2>Pessoas e acessos</h2><p class="sub">Defina o que cada pessoa vê. Todo mundo tem Início e Tarefas; os módulos de loja (Vendas, Produto, Pessoas) dependem do nível. As mudanças valem na hora.</p>
+    <div class="ac-niveis">${Object.entries(NIVEL).map(([k, [n, d]]) => `<div class="card ac-niv"><b>${n}<span>${conta(k)}</span></b><p>${d}</p></div>`).join('')}</div>
+    ${A.dados ? '' : '<div class="aviso">Os dados das lojas ainda não chegaram: por enquanto só dá para definir administradores, diretoria e equipe.</div>'}
+    <form class="card ac-novo" id="acNovo"><b>Adicionar pessoa</b><input id="acEmail" type="email" placeholder="e-mail @darmand.com.br" required><input id="acNome" placeholder="Nome (opcional)" maxlength="80"><button class="btn prim" type="submit">Adicionar</button><span class="st">Ela entra como Equipe (só tarefas); depois ajuste o nível aqui embaixo.</span></form>
+    <div class="filtros"><input id="acBusca" placeholder="Buscar por nome ou e-mail…" value="${esc(S.acQ)}" autocomplete="off"><span class="st">${ps.length} de ${A.pessoas.length} pessoas</span></div>
+    <div class="card" id="acLista">${ps.map(linhaAc).join('') || '<div class="vazio">Ninguém encontrado.</div>'}</div>`;
+}
+// qualquer mudança numa linha: guarda o rascunho; se não falta nada, salva na hora
+async function acMuda(el) {
+  const lin = el.closest('[data-ac]'), email = lin.dataset.ac, p = S.acessos.pessoas.find(x => x.email === email); if (!p) return;
+  const antes = acEstado(p), e = { ...antes };
+  if (el.matches('[data-ac-nivel]')) { e.nivel = el.value; e.modulos = e.nivel === 'equipe' ? [] : ['vendas', 'produto', 'pessoas']; if (e.nivel === 'gerente' && e.loja === 'todas') e.loja = ''; if (e.nivel === 'equipe') e.loja = ''; if (e.nivel === 'admin' || e.nivel === 'diretoria') e.gestor = true; }
+  else if (el.matches('[data-ac-loja]')) e.loja = el.value;
+  else if (el.matches('[data-ac-mod]')) e.modulos = ['vendas', 'produto', 'pessoas'].filter(k => k === el.dataset.acMod ? el.checked : e.modulos.includes(k));
+  else if (el.matches('[data-ac-gestor]')) e.gestor = el.checked;
+  else if (el.matches('[data-ac-ativo]')) e.ativo = el.checked;
+  S.acDraft[email] = e;
+  if (acFalta(e)) { desenha(); return; }
+  try {
+    await api('PUT', '/api/acessos/' + encodeURIComponent(email), { nivel: e.nivel, loja: e.loja || null, modulos: e.modulos, gestor: e.gestor, ativo: e.ativo });
+    delete S.acDraft[email]; S.acessos = await api('GET', '/api/acessos'); toast(`Acesso de ${p.nome.split(' ')[0]} salvo: ${NIVEL[e.nivel][0]}.`); await recarrega();
+  } catch (er) { delete S.acDraft[email]; toast(er.message, true); desenha(); }
+}
 function vEquipe() {
   const h = hoje(), lista = S.pessoas.filter(p => S.me.gestor || p.ativo);
   const linhas = lista.map(p => {
@@ -1897,6 +1980,13 @@ main.addEventListener('click', e => {
   if (e.target.closest('[data-barra]')) return;
   const pr = e.target.closest('[data-pessoa]'); if (pr) { S.vista = 'tarefas'; S.f = { q: '', resp: pr.dataset.pessoa, proj: '', sit: 'abertas', prazo: '' }; desenha(); return; }
   const it = e.target.closest('[data-id]'); if (it) { const t = S.tarefas.find(x => x.id === +it.dataset.id); if (t) janelaTarefa(t); }
+});
+main.addEventListener('change', e => { if (e.target.closest('[data-ac]') && !e.target.matches('#acBusca')) acMuda(e.target); });
+main.addEventListener('input', e => { if (e.target.id === 'acBusca') { S.acQ = e.target.value; const pos = e.target.selectionStart; desenha(); const b = document.getElementById('acBusca'); if (b) { b.focus(); b.setSelectionRange(pos, pos); } } });
+main.addEventListener('submit', async e => {
+  if (e.target.id !== 'acNovo') return; e.preventDefault();
+  const email = $('#acEmail').value.trim().toLowerCase(), nome = $('#acNome').value.trim();
+  try { await api('POST', '/api/pessoas', { email, nome }); S.acessos = await api('GET', '/api/acessos'); S.acQ = ''; toast('Pessoa adicionada. Agora escolha o nível dela.'); await recarrega(); } catch (er) { toast(er.message, true); }
 });
 main.addEventListener('change', async e => {
   const ds = e.target.closest('[data-designa]');

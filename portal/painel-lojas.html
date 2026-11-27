@@ -882,7 +882,7 @@ function build(){
 }
 const lojaNome=id=>id==='todas'?'Todas as lojas':S.lojas[id]?.nome||id;
 function vinc(){return S.me?.id?S.gerentes[S.me.id]:null}
-function curStore(){if(S.admin){if(S.sel==='todas'&&M.base.todas)return'todas';if(S.sel&&S.lojas[S.sel])return S.sel;return M.base.todas?'todas':(M.stores.find(s=>M.base[s.id])?.id||M.stores[0]?.id)}return vinc()?.loja||null}
+function curStore(){if(S.ver){if(S.sel==='todas'&&M.base.todas)return'todas';if(S.sel&&S.lojas[S.sel])return S.sel;return M.base.todas?'todas':(M.stores.find(s=>M.base[s.id])?.id||M.stores[0]?.id)}return vinc()?.loja||null}
 const temBase=l=>!!M.base[l];
 function refOf(l){const st=M.by[l];if(!st)return M.ref;const ks=Object.keys(st.daily).filter(x=>st.daily[x].v>0).sort();return ks[ks.length-1]||M.ref}
 function firstOf(l){const ks=Object.keys(M.by[l]?.daily||{}).sort();return ks[0]||M.ref}
@@ -1517,7 +1517,7 @@ function ctxCard(l,id,nomeV){const k=l+'|'+id,c=S.equipeCtx[k],pode=ctxPode(l),e
       ${notas.map(n=>`<div class="ctx-n"><span class="m">${fDH(n.em)} · ${esc((n.nome||n.por||'').replace(/\s*\(.*$/,''))}</span><p>${esc(n.t)}</p>${S.admin||n.por===S.me?.id?`<button class="x" type="button" data-act="ctxapaga" data-id="${esc(k)}" data-em="${n.em}" title="Apagar anotação" aria-label="Apagar anotação">×</button>`:''}</div>`).join('')||'<p class="note">Nenhuma anotação ainda.</p>'}</div>`:''}</section>`}
 // vendedores que venderam do 1º dia do mês anterior até o último dia fechado (quem saiu da loja some sozinho)
 function dias2m(l){const ref=refOf(l),ini=addMes(ref.slice(0,7),-1)+'-01',o=[];for(let d=ini;d<=ref;d=add(d,1))o.push(d);return o}
-function vTime(){const l=S.admin?curStore():vinc()?.loja;
+function vTime(){const l=S.ver?curStore():vinc()?.loja;
   if(!l)return`<div class="center"><h2>Você ainda não está vinculado a uma loja</h2></div>`;
   if(l==='todas'){const L=M.stores.filter(s=>M.ana[s.id]).map(s=>{const E=equipe(s.id,dias2m(s.id)),rs=E?E.rows:[],f=rs.filter(r=>S.equipeCtx[s.id+'|'+r.id]).length;return{s,n:rs.length,f}});
     return`<div class="head"><div><h1>Contexto das equipes</h1><p>Quem é cada vendedor, contado pelo gerente da loja · escolha a loja no menu ao lado para ver as pessoas</p></div></div>
@@ -2149,13 +2149,14 @@ function draw(){const main=$('#main');const keep={};main.querySelectorAll('input
   if(!Object.values(S.loaded).every(Boolean)){main.innerHTML=`<div class="center"><h2>Carregando o portal…</h2><p>${S.slow?'Os dados estão demorando. O portal atualiza sozinho quando responder.':'Buscando vendas, metas e o comparativo com 2025.'}</p></div>`;return}
   build();for(const x in _md)delete _md[x];const l=curStore();
   $('#nav').innerHTML=nav();setTema();
-  $('#loja').innerHTML=S.admin?`<span>Loja</span><select id="sel-loja" aria-label="Loja">${M.base.todas?`<option value="todas" ${l==='todas'?'selected':''}>Todas as lojas</option>`:''}${M.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===l?'selected':''}>${esc(s.nome)}${temBase(s.id)?'':' (em conferência)'}</option>`).join('')}</select>`:`<span>Loja</span><b>${esc(l?lojaNome(l):'—')}</b>`;
+  $('#loja').innerHTML=S.ver?`<span>Loja</span><select id="sel-loja" aria-label="Loja">${M.base.todas?`<option value="todas" ${l==='todas'?'selected':''}>Todas as lojas</option>`:''}${M.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===l?'selected':''}>${esc(s.nome)}${temBase(s.id)?'':' (em conferência)'}</option>`).join('')}</select>`:`<span>Loja</span><b>${esc(l?lojaNome(l):'—')}</b>`;
   $('#who').innerHTML=S.me?`<a href="#perfil" class="who-av" title="${S.admin?'Personagens':'Meu personagem'}">${avatar(S.me.id,26)}</a><span>${esc(S.me.name||'Você')}${S.admin?' · matriz':''}</span>${window.portalSair?'<button class="sair" type="button" onclick="portalSair()" title="Sair do portal">Sair</button>':''}`:'';
   $('#mtit').textContent=l?lojaNome(l):'Portal do Gerente';
   const sl=$('#sel-loja');if(sl)sl.onchange=()=>{S.sel=sl.value;ls.set('loja-sel',S.sel);S.dia=null;S.vendSel=null;S.fam=null;S.metaMes=null;render()};
   if(!l){main.innerHTML=`<div class="center"><h2>Você ainda não está vinculado a uma loja</h2><p>Peça para a matriz vincular seu nome a uma loja.</p></div>`;return}
   const V={visao:vVisao,comunicados:vComunicados,perfil:vPerfil,time:vTime,vendas:vVendas,metas:vMetas,ano:vAno,ese:vEse,demanda:vDemanda,produto:vProduto,equipe:vEquipe,campanhas:vCampanhas,rede:vRede,estoque:vEstoque,admin:vAdmin};
   if(!V[S.view]||(S.view==='admin'&&!S.admin))S.view='visao';
+  if(S.vistasOk&&S.vistasOk.length&&!S.vistasOk.includes(S.view)&&S.view!=='admin')S.view=S.vistasOk[0];
   if(S.view==='demanda'&&S.per==='dia')S.per='mes';
   const aviso=l==='todas'&&S.view!=='rede'&&S.view!=='admin'?`<div class="chips aviso"><span class="chip on">Visão do grupo</span><span class="chip lg">soma das lojas conferidas no centavo: ${M.okTodas.map(x=>esc(lojaNome(x))).join(', ')}</span>${M.stores.length>M.okTodas.length?`<span class="chip">${M.stores.length-M.okTodas.length} lojas em conferência ficam de fora</span>`:''}</div>`:'';
   const akey=S.view+'|'+l+'|'+S.per,anim=!(S.animados||(S.animados=new Set())).has(akey);S.animados.add(akey);main.classList.toggle('anim',anim);if(anim)setTimeout(()=>contar(main),60);
@@ -2170,9 +2171,9 @@ function draw(){const main=$('#main');const keep={};main.querySelectorAll('input
   if(S.view==='metas'){bindMeta();bindMetaG()}if(S.view==='demanda')bindDem();if(S.view==='estoque')bindEst();if(S.view==='produto')bindProduto();
   {const b=$('#eg-busca');if(b){const run=()=>{const v=b.value.trim().toLowerCase();const te=document.querySelector('.tbl.eg');if(v&&te&&te.classList.contains('cort')){te.classList.remove('cort');const nb=te.nextElementSibling;if(nb&&nb.classList.contains('vermais'))nb.remove()}document.querySelectorAll('.tbl.eg tbody tr').forEach(tr=>tr.style.display=!v||tr.dataset.nome.includes(v)?'':'none')};b.oninput=run;run()}}if(S.view==='ese')bindEse();if(S.view==='admin'){bindAdmin();profiles()}if(S.view==='comunicados'&&S.admin){bindAdmin();profiles()}if(S.view==='perfil')bindPerfil();if(!S._profOk&&S.user&&Object.keys(S.gerentes).length){S._profOk=1;profiles()}}
 const EMBED=window.self!==window.top;
-function avisaGestao(){if(!EMBED)return;try{const l=curStore();parent.postMessage({portal:1,view:S.view,admin:!!S.admin,loja:l,lojaNome:l?lojaNome(l):'',lojas:S.admin?[...(M.base.todas?[{id:'todas',nome:'Todas as lojas'}]:[]),...M.stores.map(s=>({id:s.id,nome:s.nome+(temBase(s.id)?'':' (em conferência)')}))]:[],naoLidos:recNaoLidos().length},location.origin)}catch(e){}}
+function avisaGestao(){if(!EMBED)return;try{const l=curStore();parent.postMessage({portal:1,view:S.view,admin:!!S.admin,loja:l,lojaNome:l?lojaNome(l):'',lojas:S.ver?[...(M.base.todas?[{id:'todas',nome:'Todas as lojas'}]:[]),...M.stores.map(s=>({id:s.id,nome:s.nome+(temBase(s.id)?'':' (em conferência)')}))]:[],naoLidos:recNaoLidos().length},location.origin)}catch(e){}}
 addEventListener('message',e=>{if(e.origin!==location.origin||!e.data)return;const d=e.data;
-  if(d.portalCmd==='loja'&&S.admin){S.sel=d.id;ls.set('loja-sel',S.sel);S.dia=null;S.vendSel=null;S.fam=null;S.metaMes=null;render()}
+  if(d.portalCmd==='loja'&&S.ver){S.sel=d.id;ls.set('loja-sel',S.sel);S.dia=null;S.vendSel=null;S.fam=null;S.metaMes=null;render()}
   else if(d.portalCmd==='tema'){setTema(d.tema==='escuro'?'dark':'light');render()}
   else if(d.portalCmd==='recados'&&window.portalRecarrega){portalRecarrega('recados')}});
 const AC_ST={afazer:['','não começou'],andamento:['and','fazendo'],aguardando:['agu','terminou · falta conferir'],concluida:['ok','✓ concluiu']};
@@ -2249,7 +2250,7 @@ async function start(){route();
   if(!window.claude?.use){S.fatal={t:'Abra o portal pelo link do claude.ai',d:'Os dados só carregam dentro do Claude.'};return render()}
   const[db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
   if(!db){S.fatal={t:'Entre na sua conta para ver o portal',d:'As vendas aparecem só para quem está conectado e tem acesso.'};return render()}
-  S.db=db;S.user=user;if(user){S.me=await user.me();S.admin=!!S.me.canEdit}
+  S.db=db;S.user=user;if(user){S.me=await user.me();S.admin=!!S.me.canEdit;S.ver=S.admin||!!S.me.verTodas;S.vistasOk=Array.isArray(S.me.vistas)?S.me.vistas:null}
   const tm=setTimeout(()=>{S.slow=true;render()},10000);
   const ok=k=>s=>{if(!s.metadata.fromCache||s.size)S.loaded[k]=1;if(Object.values(S.loaded).every(Boolean))clearTimeout(tm)};
   const fail=k=>err=>{S.loaded[k]=1;if(err.code==='revoked')S.fatal={t:'Acesso encerrado',d:'Seu acesso mudou. Recarregue a página.'};render()};

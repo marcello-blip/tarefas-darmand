@@ -2,7 +2,7 @@
 // - Dados: tabela docs (coleção + id + JSON), no mesmo formato do portal antigo. A tarefa diária grava por /api/ingest (token INGEST_TOKEN).
 //   Mudança do portal antigo: com o INGEST_TOKEN igual ao do portal, na primeira subida tudo é copiado de lá para o banco próprio (uma vez só).
 // - Página: portal/painel-lojas.html, aberta dentro da Gestão (em /painel); public/portal-shim.js liga a página às rotas /papi.
-// - Quem vê: a diretoria (ADMIN_EMAILS) vê todas as lojas; quem está vinculado a uma loja vê os dados; os demais não veem nada.
+// - Quem vê: níveis de acesso por pessoa (administrador geral, diretoria, gerente de loja, equipe), definidos em Admin → Pessoas e acessos.
 // - Integração com as tarefas: comunicado com "exigir ação" vira uma tarefa para o gerente de cada loja, e a diretoria acompanha por loja.
 const crypto = require('crypto');
 const fs = require('fs');
@@ -28,6 +28,8 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
       updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (col, id))`);
     // tarefa que nasceu de um comunicado: origem = 'recado:<id do comunicado>'
     try { await pool.query('ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS origem text'); } catch (e) { if (process.env.DATABASE_URL !== 'memoria') throw e; }
+    // níveis de acesso: nível, módulos marcados (vazio = padrão do nível) e "todas as lojas" para quem só consulta
+    for (const c of ['nivel', 'acesso_modulos', 'acesso_lojas']) { try { await pool.query(`ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS ${c} text`); } catch (e) { if (process.env.DATABASE_URL !== 'memoria') throw e; } }
   }
 
   // ---------- mudança do portal antigo: copia tudo, uma vez, para o banco próprio ----------
@@ -79,13 +81,42 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
     try { dadosOk = !!(await dpool.query("SELECT id FROM docs WHERE col='lojas' LIMIT 1")).rows[0]; } catch (e) { console.error('portal: não consegui ler os dados das lojas:', e.message); dadosOk = false; }
     return dadosOk;
   }
-  async function acesso(email) {
-    const admin = isAdmin(email);
-    if (!(await temDados())) return { admin, vinculo: null, dados: false };
-    try { return { admin, vinculo: admin ? null : await le('gerentes', email), dados: true }; }
-    catch (e) { console.error('portal: falha ao ler o vínculo:', e.message); return { admin, vinculo: null, dados: false }; }
+  // ---------- níveis de acesso ----------
+  // admin (administrador geral): vê tudo e define o acesso dos outros. Quem está em ADMIN_EMAILS é sempre admin.
+  // diretoria: todas as lojas; escreve comunicados e metas; não mexe nos acessos.
+  // gerente: uma loja (vínculo em docs/gerentes, papel "gerente"); compara com as outras, sem o detalhe delas.
+  // equipe: só tarefas. Se o administrador marcar módulos, a pessoa só consulta: uma loja (papel "leitor") ou todas.
+  const NIVEIS = ['admin', 'diretoria', 'gerente', 'equipe'], MODULOS = ['vendas', 'produto', 'pessoas'];
+  const VISTAS = { vendas: ['visao', 'vendas', 'metas', 'ano', 'ese', 'campanhas', 'rede'], produto: ['demanda', 'produto', 'estoque'], pessoas: ['comunicados', 'equipe', 'perfil'] };
+  function calcula(p, vinc) {
+    const papelV = vinc ? (vinc.papel || 'gerente') : null;
+    const nivel = isAdmin(p.email) ? 'admin' : NIVEIS.includes(p.nivel) ? p.nivel : papelV === 'gerente' ? 'gerente' : 'equipe';
+    let modulos = nivel === 'admin' ? MODULOS : p.acesso_modulos != null ? String(p.acesso_modulos).split(',').filter(m => MODULOS.includes(m)) : nivel === 'equipe' ? [] : MODULOS;
+    const lojas = nivel === 'admin' || nivel === 'diretoria' ? 'todas' : nivel === 'equipe' && p.acesso_lojas === 'todas' ? 'todas' : vinc && vinc.loja ? [vinc.loja] : [];
+    if (lojas !== 'todas' && !lojas.length) modulos = []; // sem loja não há o que mostrar
+    const diretoria = nivel === 'admin' || nivel === 'diretoria';
+    // telas da página do portal que a pessoa pode abrir ("time" = contexto dos vendedores: só diretoria e o gerente da loja)
+    const vistas = modulos.flatMap(m => VISTAS[m]).concat(modulos.includes('pessoas') && (diretoria || nivel === 'gerente') ? ['time'] : []);
+    return { nivel, admin: nivel === 'admin', diretoria, modulos, lojas, vistas };
   }
-  const pauth = [auth, async (req, res, next) => { const a = await acesso(req.email); req.admin = a.admin; req.vinc = a.vinculo; next(); }];
+  async function acesso(p) {
+    if (typeof p === 'string') p = (await pool.query('SELECT * FROM pessoas WHERE email=$1', [p])).rows[0] || { email: p };
+    const semDados = { ...calcula(p, null), modulos: [], vistas: [], vinculo: null, dados: false };
+    if (!(await temDados())) return semDados;
+    try { const vinc = isAdmin(p.email) ? null : await le('gerentes', p.email); return { ...calcula(p, vinc), vinculo: vinc, dados: true }; }
+    catch (e) { console.error('portal: falha ao ler o vínculo:', e.message); return semDados; }
+  }
+  // req.geral = administrador geral; req.admin = poderes de diretoria (escreve comunicados e metas, vê todas as lojas);
+  // req.vinc = vínculo com a loja; quem só consulta todas as lojas entra como "leitor" sem loja
+  const pauth = [auth, async (req, res, next) => {
+    const a = await acesso(req.pessoa); req.acesso = a; req.geral = a.admin; req.admin = a.diretoria; req.lojas = a.lojas; req.modulos = a.modulos;
+    req.vinc = a.diretoria || !a.modulos.length ? null : (a.vinculo || { loja: null, papel: 'leitor' });
+    next();
+  }];
+  const soGeral = (req, res, next) => req.geral ? next() : res.status(403).json({ erro: 'Só o administrador geral pode fazer isso.' });
+  // outras lojas: da análise fica só o que a comparação entre lojas usa (venda e vendedores por dia), sem produtos, pagamentos e horários
+  const resumida = d => ({ loja: d.loja, mes: d.mes, fonte: d.fonte, atualizadoEm: d.atualizadoEm, resumida: true, vendedores: d.vendedores || {},
+    dias: Object.fromEntries(Object.entries(d.dias || {}).map(([k, x]) => [k, { v: x.v, n: x.n, p: x.p, desc: x.desc, vend: x.vend || {} }])) });
 
   // ---------- página ----------
   let cache = null, mt0 = 0;
@@ -129,15 +160,21 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
   }
 
   // ---------- API usada pela página (pelo shim) ----------
-  app.get('/papi/me', pauth, (req, res) => res.json({ id: req.email, email: req.email, admin: req.admin, vinculo: req.vinc }));
-  app.get('/papi/me/perfil', pauth, async (req, res) => res.json({ id: req.email, name: req.pessoa.nome || req.email, avatarUrl: req.pessoa.foto || '', canEdit: req.admin }));
-  // leitura: diretoria e pessoas vinculadas a uma loja leem tudo; quem não está vinculado só vê o próprio vínculo
+  app.get('/papi/me', pauth, (req, res) => res.json({ id: req.email, email: req.email, admin: req.admin, vinculo: req.vinc, nivel: req.acesso.nivel }));
+  app.get('/papi/me/perfil', pauth, async (req, res) => res.json({ id: req.email, name: req.pessoa.nome || req.email, avatarUrl: req.pessoa.foto || '', canEdit: req.admin, verTodas: req.lojas === 'todas', vistas: req.acesso.vistas, nivel: req.acesso.nivel }));
+  // leitura: a diretoria lê tudo; quem tem loja lê os totais de todas (comparação) e o detalhe só da sua; os demais, nada
   app.get('/papi/col/:col', pauth, async (req, res) => {
     const col = req.params.col; if (!COLS.has(col)) return res.status(404).json({ erro: 'coleção' });
     if (!req.admin && !req.vinc && col !== 'gerentes') return res.json({ docs: [], versao: 0 });
-    let docs = await leCol(col); if (!req.admin && !req.vinc) docs = docs.filter(d => d.id === req.email);
+    const restrito = !req.admin && req.lojas !== 'todas', minha = id => req.lojas !== 'todas' && req.lojas.includes(String(id).split('_')[0]);
+    let docs;
+    // estoque e movimentação: só da própria loja (nem chegam a ser lidos os das outras)
+    if (restrito && (col === 'estoque' || col === 'mov')) { docs = []; for (const id of req.lojas) { const r = await dpool.query('SELECT id, data, updated_at FROM docs WHERE col=$1 AND id=$2', [col, id]); if (r.rows[0]) docs.push(r.rows[0]); } }
+    else docs = await leCol(col);
+    if (!req.admin && !req.vinc) docs = docs.filter(d => d.id === req.email);
+    if (restrito && col === 'analise') docs = docs.map(d => minha(d.id) ? d : { ...d, data: resumida(d.data || {}) });
     // comunicados: quem não é da diretoria só vê os da sua loja e os de todas as lojas; "ciente": cada um só vê o seu
-    if (!req.admin && col === 'recados') docs = docs.filter(d => d.data && (d.data.para === 'todas' || d.data.para === req.vinc.loja));
+    if (!req.admin && col === 'recados') docs = req.modulos.includes('pessoas') ? docs.filter(d => d.data && (d.data.para === 'todas' || d.data.para === req.vinc.loja)) : [];
     if (!req.admin && col === 'leituras') docs = docs.filter(d => d.data && d.data.email === req.email);
     // contexto dos vendedores (dados pessoais): só a diretoria e o gerente da própria loja
     if (!req.admin && col === 'equipe') docs = ehGerente(req) ? docs.filter(d => d.data && d.data.loja === req.vinc.loja) : [];
@@ -156,7 +193,7 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
   });
   // escrita pela página: metas (diretoria ou gerente da própria loja); recados e vínculos (só diretoria)
   function podeEscrever(req, col, id, data) {
-    if (req.admin) return ['metas', 'recados', 'gerentes'].includes(col);
+    if (req.admin) return ['metas', 'recados'].includes(col) || (col === 'gerentes' && req.geral); // vínculos: só o administrador geral
     if (col === 'metas' && ehGerente(req)) { const loja = (data && data.loja) || String(id).split('_')[0]; return loja === req.vinc.loja && String(id).startsWith(req.vinc.loja + '_'); }
     return false;
   }
@@ -233,7 +270,7 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
     res.json({ id, tarefas });
   });
   app.delete('/papi/doc/:col/:id', pauth, async (req, res) => {
-    const { col, id } = req.params; if (!COLS.has(col) || !req.admin || !['recados', 'gerentes'].includes(col)) return res.status(403).json({ erro: 'sem permissão' });
+    const { col, id } = req.params; if (!COLS.has(col) || !req.admin || !['recados', 'gerentes'].includes(col) || (col === 'gerentes' && !req.geral)) return res.status(403).json({ erro: 'sem permissão' });
     await dpool.query('DELETE FROM docs WHERE col=$1 AND id=$2', [col, id]);
     if (col === 'recados') {
       for (const l of (await leCol('leituras')).filter(x => x.data && x.data.recado === id)) await dpool.query("DELETE FROM docs WHERE col='leituras' AND id=$1", [l.id]); // apaga junto quem marcou ciente
@@ -273,6 +310,43 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
     res.json(o);
   });
 
+  // ---------- Admin → Pessoas e acessos (só o administrador geral) ----------
+  app.get('/api/acessos', pauth, soGeral, async (req, res) => {
+    const [ps, ger, lojas] = await Promise.all([pool.query('SELECT * FROM pessoas ORDER BY nome'), leCol('gerentes'), leCol('lojas')]);
+    const vinc = new Map(ger.map(g => [g.id, g.data]));
+    res.json({ dados: await temDados(),
+      lojas: lojas.sort((a, b) => (a.data.ordem || 99) - (b.data.ordem || 99)).map(l => ({ id: l.id, nome: l.data.nome || l.id })),
+      pessoas: ps.rows.map(p => {
+        const v = vinc.get(p.email) || null, a = calcula(p, v);
+        return { email: p.email, nome: p.nome, foto: p.foto || '', cargo: p.cargo || '', area: p.area || '', ativo: p.ativo, fixo: isAdmin(p.email), gestor: isAdmin(p.email) || p.papel === 'gestor',
+          ultimoAcesso: p.ultimo_acesso ? new Date(p.ultimo_acesso).getTime() : null, nivel: a.nivel, modulos: a.modulos, loja: a.lojas === 'todas' ? 'todas' : (a.lojas[0] || null) };
+      }) });
+  });
+  app.put('/api/acessos/:email', pauth, soGeral, express.json({ limit: '10kb' }), async (req, res) => {
+    const email = String(req.params.email).toLowerCase(), b = req.body || {}, erro = m => res.status(400).json({ erro: m });
+    const p = (await pool.query('SELECT * FROM pessoas WHERE email=$1', [email])).rows[0];
+    if (!p) return res.status(404).json({ erro: 'Pessoa não encontrada.' });
+    if (isAdmin(email)) return erro('Este administrador é fixo (definido na configuração do sistema) e não pode ser alterado aqui.');
+    const nivel = String(b.nivel || ''); if (!NIVEIS.includes(nivel)) return erro('Nível de acesso inválido.');
+    let modulos = Array.isArray(b.modulos) ? MODULOS.filter(m => b.modulos.includes(m)) : null; // null = padrão do nível
+    let loja = b.loja ? String(b.loja) : null;
+    const lojasOk = new Set((await leCol('lojas')).map(l => l.id));
+    if (nivel === 'gerente') { if (!loja || !lojasOk.has(loja)) return erro('Escolha a loja deste gerente.'); }
+    else if (nivel === 'equipe') {
+      if (modulos && modulos.length) { if (loja !== 'todas' && !lojasOk.has(loja)) return erro('Escolha de qual loja a pessoa vê os dados (ou todas as lojas).'); }
+      else { modulos = []; loja = null; }
+    } else loja = null; // administrador e diretoria: todas as lojas
+    if (nivel === 'admin') modulos = null;
+    const papel = nivel === 'admin' ? 'gestor' : b.gestor === undefined ? p.papel : (b.gestor ? 'gestor' : 'membro');
+    const ativo = b.ativo === undefined ? p.ativo : !!b.ativo;
+    if (email === req.email && (nivel !== 'admin' || !ativo)) return erro('Você não pode tirar o seu próprio acesso de administrador.');
+    await pool.query('UPDATE pessoas SET nivel=$2, acesso_modulos=$3, acesso_lojas=$4, papel=$5, ativo=$6 WHERE email=$1', [email, nivel, modulos ? modulos.join(',') : null, loja === 'todas' ? 'todas' : null, papel, ativo]);
+    // vínculo com a loja: gerente (cadastra metas, recebe as tarefas dos comunicados) ou leitor (só consulta)
+    if (loja && loja !== 'todas') await grava('gerentes', email, { loja, papel: nivel === 'gerente' ? 'gerente' : 'leitor', vinculadoEm: Date.now(), por: req.email });
+    else await dpool.query('DELETE FROM docs WHERE col=$1 AND id=$2', ['gerentes', email]);
+    res.json({ ok: true });
+  });
+
   // ---------- resumo para o Início (minha loja no mês, lojas abaixo do ritmo, comunicados sem ciente) ----------
   app.get('/papi/resumo', pauth, async (req, res) => {
     if (!req.admin && !req.vinc) return res.json({ acesso: false });
@@ -282,7 +356,7 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
     const gerDe = id => ger.filter(g => g.data && g.data.loja === id && (g.data.papel || 'gerente') === 'gerente').map(g => g.id);
     const linhas = [];
     for (const l of lojas.sort((a, b) => ((a.data.ordem || 99) - (b.data.ordem || 99)))) {
-      if (!req.admin && req.vinc.loja !== l.id) continue;
+      if (!req.modulos.includes('vendas') || (req.lojas !== 'todas' && !req.lojas.includes(l.id))) continue;
       const v = vendas.find(x => x.id === `${l.id}_${mes}`), m = metas.find(x => x.id === `${l.id}_${mes}`);
       if (!v) continue;
       const dias = Object.keys(v.data.dias || {}).filter(d => (v.data.dias[d].v || 0) > 0).sort(), ult = dias[dias.length - 1] || null;
@@ -291,7 +365,7 @@ module.exports = function criaPortal({ app, express, pool, origem, auth, isAdmin
       const esperado = m && ult ? Object.entries(m.data.metaDias || {}).filter(([d]) => d <= ult).reduce((s, [, x]) => s + (+x || 0), 0) : 0;
       linhas.push({ id: l.id, nome: l.data.nome || l.id, vendido, meta, esperado, ultimoDia: ult ? { dia: `${mes}-${ult}`, v: v.data.dias[ult].v || 0, meta: m ? +(m.data.metaDias || {})[ult] || 0 : 0 } : null, gerentes: gerDe(l.id) });
     }
-    const meus = recs.filter(r => r.data && (req.admin || r.data.para === 'todas' || r.data.para === req.vinc.loja));
+    const meus = req.modulos.includes('pessoas') ? recs.filter(r => r.data && (req.admin || r.data.para === 'todas' || r.data.para === req.vinc.loja)) : [];
     const lidos = new Set(leit.filter(x => x.data && x.data.email === req.email).map(x => x.data.recado));
     const naoLidos = req.admin ? [] : meus.filter(r => !lidos.has(r.id)).sort((a, b) => b.data.criadoEm - a.data.criadoEm).slice(0, 5).map(r => ({ id: r.id, titulo: r.data.titulo, criadoEm: r.data.criadoEm, acao: !!r.data.acao }));
     res.json({ acesso: true, admin: req.admin, loja: req.vinc ? req.vinc.loja : null, mes, lojas: linhas, naoLidos });

@@ -125,3 +125,19 @@ Os módulos do portal só aparecem quando existem dados de lojas no banco. Para 
 6. Depois de uma carga diária conferida, o projeto do portal antigo pode ser apagado.
 
 Quem é "diretoria" nos módulos do portal é quem está em `ADMIN_EMAILS` deste serviço.
+
+## Níveis de acesso
+
+Em **Admin → Pessoas e acessos** (só o administrador geral vê), cada pessoa tem um nível:
+
+| Nível | O que vê | O que faz |
+|---|---|---|
+| **Administrador geral** | Tudo, todas as lojas | Define o acesso de todo mundo. Quem está em `ADMIN_EMAILS` é sempre administrador e não pode ser alterado pela tela. |
+| **Diretoria** | Todas as lojas, em detalhe | Escreve comunicados e define metas. Não mexe nos acessos. |
+| **Gerente de loja** | A própria loja em detalhe e a comparação com as outras (Grupo, corrida, pódios) | Cadastra a meta da loja e recebe as tarefas dos comunicados. |
+| **Equipe** | Só Início e Tarefas | Se o administrador marcar módulos, só consulta: uma loja ou todas. |
+
+- **Ajuste fino:** em cada pessoa dá para marcar quais módulos ela vê além de Tarefas (Vendas, Produto, Pessoas). Ex.: fábrica com Produto de todas as lojas, sem Vendas.
+- **No servidor:** quem não é da diretoria recebe os totais de venda e meta de todas as lojas (para a comparação), mas o detalhe das outras lojas não sai do servidor: estoque e movimentação só da própria loja, e da análise das outras só a venda e os vendedores por dia (sem produtos, pagamentos e horários).
+- **Limite conhecido:** o corte por módulo vale nas telas. Quem tem Produto e não tem Vendas não vê as telas de Vendas, mas os totais de venda continuam chegando ao navegador dele, porque as telas de Produto usam esses dados.
+- "Gestor de tarefas" e "Pode entrar" ficam na mesma tela.

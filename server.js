@@ -79,7 +79,7 @@ async function initDb() {
   await pool.query(`CREATE TABLE IF NOT EXISTS pessoas (
     email text PRIMARY KEY, nome text NOT NULL, foto text, cargo text, area text,
     papel text NOT NULL DEFAULT 'membro', ativo boolean NOT NULL DEFAULT true,
-    criado_em timestamptz NOT NULL DEFAULT now(), ultimo_acesso timestamptz, prefs text)`);
+    criado_em timestamptz NOT NULL DEFAULT now(), ultimo_acesso timestamptz, prefs text, nivel text, acesso_modulos text, acesso_lojas text)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS projetos (
     id serial PRIMARY KEY, nome text NOT NULL, cor text NOT NULL DEFAULT '#9d162e', ativo boolean NOT NULL DEFAULT true,
     descricao text, responsavel text, inicio date, fim date, status text NOT NULL DEFAULT 'andamento',
@@ -288,7 +288,7 @@ app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(p
 
 // ---------- eu ----------
 const lePrefs = p => { try { return JSON.parse(p.prefs || '{}') || {}; } catch { return {}; } };
-app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa), portal: await portal.acesso(req.email) }));
+app.get('/api/me', auth, async (req, res) => res.json({ ...pessoaOut(req.pessoa), gestor: req.gestor, ia: ia.temChave() || DEV, agenda: await agenda.status(req.email), prefs: lePrefs(req.pessoa), portal: await portal.acesso(req.pessoa) }));
 // preferências de cada pessoa (como quer ver as tarefas: lista ou quadro), valem em qualquer computador
 const PREFS = { visao: ['lista', 'quadro'], visaoInicio: ['lista', 'quadro'], tema: ['auto', 'claro', 'escuro'] };
 app.put('/api/me/prefs', auth, express.json({ limit: '5kb' }), async (req, res) => {
