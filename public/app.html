@@ -215,17 +215,53 @@ button.kpi:hover{border-color:var(--muted)}
 .pinfo div small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
 .pinfo div b{font-weight:600}
 
-/* início: boas-vindas e mural */
-.boas-vindas{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
-.resumo-dia{background:var(--brand-soft);border-radius:12px;padding:10px 14px;font-size:14px;max-width:560px}
-.inicio-grid{display:grid;grid-template-columns:minmax(300px,1fr) 2fr;gap:20px;align-items:start}
-.mural{padding:16px;position:sticky;top:76px;border-top:4px solid var(--amber)}
-.mural-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.mural-cab h3{margin:0;font-size:15px}
-.lem-novo{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.lem-novo input,.lem-novo select{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);min-width:0}
-.lem-op{display:flex;gap:6px}
-.lem-op input{flex:1}.lem-op select{flex:1}
+/* início: topo com saudação e captura rápida */
+.topo-inicio{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,1.6fr);gap:20px;align-items:center;margin-bottom:14px}
+.saudacao h2{margin:0 0 4px}
+.saudacao .sub{margin:0;font-size:13.5px;line-height:1.5}
+.captura{padding:10px;display:flex;flex-direction:column;gap:8px;border-top:3px solid var(--brand)}
+.captura>input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:15px}
+.captura>input:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+.captura-op{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.captura-op input,.captura-op select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;min-width:0}
+.captura-bt{display:flex;gap:6px;margin-left:auto}
+.captura-bt .btn{padding:7px 12px}
+/* indicadores pequenos e clicáveis */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip-kpi{display:inline-flex;align-items:baseline;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted)}
+.chip-kpi b{font-size:16px;color:var(--ink)}
+.chip-kpi:hover{border-color:var(--muted)}
+.chip-kpi.vermelho b{color:var(--red)}.chip-kpi.ambar b{color:var(--amber)}.chip-kpi.azul b{color:var(--blue)}.chip-kpi.verde b{color:var(--green)}.chip-kpi.roxo b{color:#8b5cf6}
+.chip-kpi.vermelho:not(.zero){background:var(--red-soft);border-color:transparent}
+.chip-kpi.zero{opacity:.55}
+/* duas colunas: meu dia + lado (aprovações e mural) */
+.inicio-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.inicio-grid>*{min-width:0}
+.col-lado{display:flex;flex-direction:column;gap:16px}
+.bloco{padding:14px 16px}
+.bloco-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.bloco-cab h3{margin:0;font-size:15px;display:flex;gap:8px;align-items:baseline}
+.bloco-cab h3 .n{color:var(--muted);font-weight:500;font-size:13px}
+.mural{border-top:3px solid var(--amber)}
+.vazio-p{color:var(--muted);font-size:13px;line-height:1.5;padding:6px 0}
+.dia-grupo{margin-bottom:12px}
+.dia-gt{font-size:12.5px;font-weight:600;color:var(--muted);margin:0 0 6px 2px}
+.dia-gt .n{font-weight:500}
+.col-principal .quadro{grid-template-columns:repeat(4,minmax(170px,1fr))}
+.aprov-item{padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.aprov-item:first-of-type{border-top:0;padding-top:2px}
+.aprov-item .tit span{font-weight:500;display:block}
+.aprov-item .tit small{color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}
+.aprov-bt{display:flex;gap:6px;margin-top:8px}
+.recolhidos{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.recolhe>summary{cursor:pointer;font-weight:600;font-size:14px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;list-style:none;display:flex;gap:8px;align-items:center}
+.recolhe>summary::-webkit-details-marker{display:none}
+.recolhe>summary::before{content:'▸';color:var(--muted)}
+.recolhe[open]>summary::before{content:'▾'}
+.recolhe>summary .n{color:var(--muted);font-weight:500}
+.recolhe[open]>summary{margin-bottom:8px}
+.pisca{animation:pisca 1.2s}
+@keyframes pisca{0%,100%{box-shadow:var(--shadow)}30%{box-shadow:0 0 0 3px var(--brand)}}
 .lem-grupo{margin-top:8px}
 .lem-gt{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:6px 0 2px}
 .lem-gt.atrasada{color:var(--red)}.lem-gt.hoje{color:var(--amber)}
@@ -238,12 +274,10 @@ button.kpi:hover{border-color:var(--muted)}
 .lem-ver{border:0;background:none;color:var(--muted);font-size:13px;padding:10px 0 4px}
 .cartao .aprova{display:flex;gap:6px;margin-top:8px}
 .col-dica{font-size:12px;color:var(--muted);padding:10px 6px;border:1px dashed var(--line);border-radius:8px;text-align:center}
-.inicio-grid>*{min-width:0}
 .secao h3{flex-wrap:wrap}
-.linha-aprova{display:flex!important;flex-wrap:wrap;gap:8px}
-.linha-aprova .tit{flex:1 1 200px}
-@media (max-width:900px){.inicio-grid{grid-template-columns:1fr}.mural{position:static}}
-@media (max-width:640px){.lem-op{flex-wrap:wrap}.lem-op input,.lem-op select{flex:1 1 45%}.lem-op .btn{flex:1 1 100%}.boas-vindas{display:block}.resumo-dia{margin-top:10px}}
+@media (max-width:1100px){.topo-inicio{grid-template-columns:1fr}}
+@media (max-width:900px){.inicio-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.captura-op input,.captura-op select{flex:1 1 40%}.captura-bt{margin-left:0;flex:1 1 100%}.captura-bt .btn{flex:1}.chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.chip-kpi{flex:none}}
 
 /* narrar */
 .janela.larga{max-width:980px}
@@ -664,21 +698,23 @@ function muralHtml() {
       ${l.data && !l.feito ? `<span class="selo ${l.data < h ? 'atrasada' : l.data === h ? 'hoje' : ''}">${l.data === h ? 'hoje' : l.data === somaDias(h, 1) ? 'amanhã' : curta(l.data)}</span>` : ''}
       <button class="lem-x" data-lem-apaga="${l.id}" title="Apagar">×</button>
     </div>`;
-  const opt = (v, t) => `<option value="${v}">${t}</option>`;
-  return `<div class="mural-cab"><h3>📌 Meu mural</h3><span class="dica">🔒 Só você vê</span></div>
-    <div class="lem-novo">
-      <input id="lTxt" maxlength="300" placeholder="Anote um lembrete… (Enter para salvar)">
-      <div class="lem-op"><input type="date" id="lData" title="Data (opcional)"><select id="lRec" title="Repetir">${RECORR.map(([k, n]) => opt(k, k ? '🔁 ' + n : 'Não repete')).join('')}</select><button class="btn prim peq" id="lAdd">Adicionar</button></div>
-    </div>
-    ${ab.length ? grupos.filter(g => g[1].length).map(([n, ls, c]) => `<div class="lem-grupo"><div class="lem-gt ${c}">${n} <span class="n">${ls.length}</span></div>${ls.sort(ordemL).map(item).join('')}</div>`).join('')
-      : '<div class="vazio" style="padding:18px 6px">Nada no mural. Anote aqui pequenas coisas para não esquecer: ligar para alguém, conferir algo toda sexta, um checklist do dia.</div>'}
+  return `<div class="bloco-cab"><h3>📌 Meu mural <span class="n">${ab.length}</span></h3><span class="dica">🔒 Só você vê</span></div>
+    ${ab.length ? grupos.filter(g => g[1].length).map(([n, ls, c]) => `<div class="lem-grupo"><div class="lem-gt ${c}">${n}</div>${ls.sort(ordemL).map(item).join('')}</div>`).join('')
+      : '<div class="vazio-p">Nada no mural. Use a caixa lá em cima e clique em <b>📌 Lembrete</b> para anotar pequenas coisas: ligar para alguém, conferir algo toda sexta, um checklist do dia.</div>'}
     ${feitos.length ? `<button class="lem-ver" data-lem-feitos>${S.verFeitos ? '▾' : '▸'} Feitos recentes (${feitos.length})</button>${S.verFeitos ? feitos.map(item).join('') : ''}` : ''}`;
 }
-async function addLembrete() {
-  const t = $('#lTxt'); if (!t || !t.value.trim()) { t && t.focus(); return; }
-  try { const l = await api('POST', '/api/lembretes', { texto: t.value, data: $('#lData').value || null, recorrencia: $('#lRec').value || null }); S.lembretes.push(l); desenha(); const n = $('#lTxt'); n && n.focus(); }
-  catch (e) { toast(e.message, true); }
+// caixa de anotação rápida do Início: vira tarefa (para mim) ou lembrete (mural)
+async function capturaRapida(tipo) {
+  const t = $('#qTxt'); if (!t || !t.value.trim()) { t && t.focus(); toast('Escreva o que precisa ser feito.', true); return; }
+  const data = $('#qData').value || null, recorrencia = $('#qRec').value || null;
+  localSet('qTipo', tipo);
+  try {
+    if (tipo === 'lembrete') { const l = await api('POST', '/api/lembretes', { texto: t.value, data, recorrencia }); S.lembretes.push(l); toast('📌 Lembrete no seu mural.'); }
+    else { await api('POST', '/api/tarefas', { titulo: t.value, responsavel: S.me.email, prazo: data, recorrencia }); toast('Tarefa criada para você. ✅'); await carrega(); }
+    desenha(); const n = $('#qTxt'); n && n.focus();
+  } catch (e) { toast(e.message, true); }
 }
+const addLembrete = () => capturaRapida('lembrete');
 
 function vInicio() {
   const abertas = S.tarefas.filter(t => t.status !== 'concluida');
@@ -710,32 +746,63 @@ function vInicio() {
         <a class="btn prim" href="/api/google/conectar" style="text-decoration:none">${ag.erro ? 'Reconectar' : 'Conectar'}</a>
         ${ag.erro ? '' : '<button class="btn" data-dispensa-agenda>Agora não</button>'}
       </div>` : '';
+  // "Meu dia": minhas tarefas separadas por urgência
+  const s7 = somaDias(hj0, 7);
+  const grupos = [
+    ['🔴 Atrasadas', minhas.filter(t => situacao(t) === 'atrasada')],
+    ['🟠 Hoje', minhas.filter(t => t.prazo === hj0)],
+    ['🔵 Próximos 7 dias', minhas.filter(t => t.prazo > hj0 && t.prazo <= s7)],
+    ['⚪ Depois', minhas.filter(t => t.prazo > s7)],
+    ['Sem prazo', minhas.filter(t => !t.prazo)],
+  ].filter(g => g[1].length);
+  const meuDia = S.modoInicio === 'quadro' ? quadroHtml(minhasQuadro)
+    : minhas.length ? grupos.map(([n, ts]) => `<div class="dia-grupo"><div class="dia-gt">${n} <span class="n">${ts.length}</span></div><div class="card lista">${ts.map(linha).join('')}</div></div>`).join('')
+    : '<div class="card vazio">Nenhuma tarefa aberta com você. 🎉<br><span class="dica">Anote algo na caixa lá em cima ou use o 🎙 Narrar.</span></div>';
+  const chip = (v, rot, cor, ir) => `<button class="chip-kpi ${cor} ${v ? '' : 'zero'}" ${ir}><b>${v}</b><span>${rot}</span></button>`;
+  const tipo = localGet('qTipo') === 'lembrete' ? 'lembrete' : 'tarefa';
+  const recolhe = (chave, titulo, n, corpo) => n ? `<details class="recolhe" data-recolhe="${chave}" ${localGet('abre.' + chave) === '1' ? 'open' : ''}><summary>${titulo} <span class="n">${n}</span></summary>${corpo}</details>` : '';
   return `${avisoAg}
-    <div class="boas-vindas">
-      <div><h2>${saud}, ${esc(nomeSo)}! 👋</h2>
-      <p class="sub" style="margin:2px 0 0">Bem-vindo(a) ao seu espaço. ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.</p></div>
-      <div class="resumo-dia">✨ ${resumo}</div>
-    </div>
-    <div class="inicio-grid">
-      <div class="mural card">${muralHtml()}</div>
-      <div>
-        ${aprovar.length ? `<div class="secao" style="margin-top:0"><h3>⏳ Esperando sua aprovação <span class="n">${aprovar.length}</span></h3><div class="card lista">${aprovar.map(t => `
-          <div class="linha linha-aprova" data-id="${t.id}">
-            <div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(nome(t.responsavel))} terminou ${chipProjeto(t.projetoId)}</small></div>
-            <button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button>
-          </div>`).join('')}</div></div>` : ''}
-        <div class="secao" style="${aprovar.length ? '' : 'margin-top:0'}"><h3>Minhas tarefas <span class="n">${minhas.length}</span><span style="margin-left:auto">${alterna(S.modoInicio, 'data-modo-inicio')}</span></h3>
-          ${S.modoInicio === 'quadro' ? quadroHtml(minhasQuadro) : listaHtml(minhas, 'Nenhuma tarefa aberta com você. 🎉')}</div>
+    <div class="topo-inicio">
+      <div class="saudacao"><h2>${saud}, ${esc(nomeSo)}! 👋</h2><p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${resumo}</p></div>
+      <div class="captura card">
+        <input id="qTxt" maxlength="300" placeholder="O que você precisa fazer? Escreva e aperte Enter…" autocomplete="off">
+        <div class="captura-op">
+          <input type="date" id="qData" title="Data (opcional)">
+          <select id="qRec" title="Repetir">${RECORR.map(([k, n]) => `<option value="${k}">${k ? '🔁 ' + n : 'Não repete'}</option>`).join('')}</select>
+          <span class="captura-bt">
+            <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você (aparece para a equipe)">+ Tarefa</button>
+            <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota no seu mural (só você vê)">📌 Lembrete</button>
+            <button class="btn" data-narrar title="Fale ou escreva várias coisas e a IA organiza">🎙</button>
+          </span>
+        </div>
       </div>
     </div>
-    <div class="kpis" style="margin-top:24px">
-      <button class="kpi vermelho" data-ir="atrasadas"><div class="v">${atras.length}</div><div class="r">Atrasadas</div></button>
-      <button class="kpi ambar" data-ir="hoje"><div class="v">${hj.length}</div><div class="r">Vencem hoje</div></button>
-      <button class="kpi azul" data-ir="semana"><div class="v">${sem.length}</div><div class="r">Próximos 7 dias</div></button>
-      <div class="kpi verde"><div class="v">${conclMes.length}</div><div class="r">Concluídas no mês${comPrazo.length ? ` · ${Math.round(okMes / comPrazo.length * 100)}% no prazo` : ''}</div></div>
+    <div class="chips">
+      ${chip(minhasAtras, 'atrasadas', 'vermelho', 'data-ir="atrasadas" data-eu')}
+      ${chip(minhasHoje, 'para hoje', 'ambar', 'data-ir="hoje" data-eu')}
+      ${chip(minhas.filter(t => t.prazo > hj0 && t.prazo <= s7).length, 'próximos 7 dias', 'azul', 'data-ir="semana" data-eu')}
+      ${chip(aprovar.length, 'para aprovar', 'roxo', 'data-rola="aprovar"')}
+      ${chip(lemHoje.length, 'lembretes hoje', 'verde', 'data-rola="mural"')}
+      ${S.me.gestor ? chip(atras.length, 'atrasadas na equipe', 'vermelho', 'data-ir="atrasadas"') : ''}
     </div>
-    ${criei.length ? `<div class="secao"><h3>Que eu passei para outras pessoas <span class="n">${criei.length}</span></h3>${listaHtml(criei, '')}</div>` : ''}
-    ${S.me.gestor && atras.length ? `<div class="secao"><h3>Atrasadas da equipe <span class="n">${atras.length}</span></h3>${listaHtml(atras.sort(ordem), '')}</div>` : ''}`;
+    <div class="inicio-grid">
+      <div class="col-principal">
+        <div class="bloco-cab"><h3>Meu dia <span class="n">${minhas.length} ${minhas.length === 1 ? 'tarefa' : 'tarefas'}</span></h3>${alterna(S.modoInicio, 'data-modo-inicio')}</div>
+        ${meuDia}
+        <div class="recolhidos">
+          ${recolhe('passei', '👥 Que eu passei para outras pessoas', criei.length, listaHtml(criei, ''))}
+          ${S.me.gestor ? recolhe('equipe', '🚨 Atrasadas da equipe', atras.length, listaHtml(atras.slice().sort(ordem), '')) : ''}
+        </div>
+      </div>
+      <aside class="col-lado">
+        ${aprovar.length ? `<div class="card bloco" id="b-aprovar"><div class="bloco-cab"><h3>⏳ Para aprovar <span class="n">${aprovar.length}</span></h3></div>${aprovar.map(t => `
+          <div class="aprov-item" data-id="${t.id}">
+            <div class="tit"><span>${esc(t.titulo)}</span><small>${avatar(t.responsavel, 'p')} ${esc(primeiroNome(t.responsavel))} terminou</small></div>
+            <div class="aprov-bt"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>
+          </div>`).join('')}</div>` : ''}
+        <div class="card bloco mural" id="b-mural">${muralHtml()}</div>
+      </aside>
+    </div>`;
 }
 
 function filtra() {
@@ -1210,7 +1277,11 @@ main.addEventListener('click', e => {
   const chk = e.target.closest('[data-chk]');
   if (chk) { e.stopPropagation(); const t = S.tarefas.find(x => x.id === +chk.dataset.chk); mudaStatus(t.id, t.status === 'concluida' ? 'afazer' : 'concluida'); return; }
   const ir = e.target.closest('[data-ir]');
-  if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); return; }
+  if (ir) { S.vista = 'tarefas'; S.modo = 'lista'; S.f = { q: '', resp: ir.hasAttribute('data-eu') ? '_eu' : '', proj: '', sit: 'abertas', prazo: { atrasadas: 'atrasada', hoje: 'hoje', semana: 'semana' }[ir.dataset.ir] }; desenha(); window.scrollTo(0, 0); return; }
+  const cap = e.target.closest('[data-captura]'); if (cap) { capturaRapida(cap.dataset.captura); return; }
+  if (e.target.closest('[data-narrar]')) { const q = $('#qTxt'); janelaNarrar(q ? q.value : ''); return; }
+  const rola = e.target.closest('[data-rola]');
+  if (rola) { const alvo = $('#b-' + rola.dataset.rola); if (alvo) { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); alvo.classList.add('pisca'); setTimeout(() => alvo.classList.remove('pisca'), 1200); } return; }
   const md = e.target.closest('[data-modo]'); if (md) { S.modo = md.dataset.modo; salvaPref('visao', S.modo); desenha(); return; }
   const mi = e.target.closest('[data-modo-inicio]'); if (mi) { S.modoInicio = mi.dataset.modoInicio; salvaPref('visaoInicio', S.modoInicio); desenha(); return; }
   const apv = e.target.closest('[data-aprova]'); if (apv) { e.stopPropagation(); fechaJanela(); mudaStatus(+apv.dataset.aprova, 'concluida', 'Tarefa aprovada. ✅'); return; }
@@ -1285,7 +1356,9 @@ main.addEventListener('dragover', e => { const col = e.target.closest('.coluna')
 main.addEventListener('drop', e => { const col = e.target.closest('.coluna'); if (!col || arrastado == null) return; e.preventDefault(); const id = arrastado; arrastado = null; mudaStatus(id, col.dataset.col); });
 
 // atualiza sozinho a cada minuto e ao voltar para a aba
-main.addEventListener('keydown', e => { if (e.target.id === 'lTxt' && e.key === 'Enter') { e.preventDefault(); addLembrete(); } });
+main.addEventListener('keydown', e => { if (e.target.id === 'qTxt' && e.key === 'Enter') { e.preventDefault(); capturaRapida(localGet('qTipo') === 'lembrete' ? 'lembrete' : 'tarefa'); } });
+// lembra quais blocos recolhidos a pessoa deixou abertos
+main.addEventListener('toggle', e => { const d = e.target.closest && e.target.closest('[data-recolhe]'); if (d) localSet('abre.' + d.dataset.recolhe, d.open ? '1' : '0'); }, true);
 setInterval(() => { if (!document.hidden) recarregaSilencioso(); }, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) recarregaSilencioso(); });
 
