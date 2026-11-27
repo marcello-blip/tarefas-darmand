@@ -254,7 +254,7 @@ if (DEV) {
 // ---------- autenticação ----------
 async function auth(req, res, next) {
   const s = confere(req.cookies.sessao);
-  const nega = () => req.path.startsWith('/api/') ? res.status(401).json({ erro: 'login' }) : res.redirect('/login');
+  const nega = () => req.path.startsWith('/api/') || req.path.startsWith('/papi/') ? res.status(401).json({ erro: 'login' }) : res.redirect('/login');
   if (!s) return nega();
   const r = await pool.query('SELECT * FROM pessoas WHERE email=$1', [s.email]);
   const p = r.rows[0];
