@@ -115,21 +115,28 @@ module.exports = function criaAgenda({ pool, clientId, clientSecret, segredo, do
   async function sincronizarTarefa(id) {
     const t = (await q('SELECT t.*, p.nome AS projeto_nome FROM tarefas t LEFT JOIN projetos p ON p.id = t.projeto_id WHERE t.id=$1', [id]))[0];
     const maps = await q('SELECT * FROM eventos_agenda WHERE tarefa_id=$1', [id]);
-    let dono = t && t.responsavel && (t.inicio || t.prazo) ? t.responsavel : null;
-    if (dono && !(await q('SELECT 1 FROM google_contas WHERE email=$1 AND erro IS NULL', [dono]))[0]) dono = null;
-    for (const m of maps) if (m.email !== dono) {
+    // quem recebe na agenda: o responsável e, na tarefa cooperativa, cada participante (os que conectaram o Google Agenda)
+    let donos = [];
+    if (t && (t.inicio || t.prazo)) {
+      const parts = (await q('SELECT email FROM tarefa_participantes WHERE tarefa_id=$1', [id])).map(r => r.email);
+      for (const e of new Set([t.responsavel, ...parts].filter(Boolean))) if ((await q('SELECT 1 FROM google_contas WHERE email=$1 AND erro IS NULL', [e]))[0]) donos.push(e);
+    }
+    for (const m of maps) if (!donos.includes(m.email)) {
       if (await apaga(m.email, m.evento_id)) await pool.query('DELETE FROM eventos_agenda WHERE tarefa_id=$1 AND email=$2', [id, m.email]);
     }
-    if (!dono) return;
-    const corpo = evento(t), m = maps.find(x => x.email === dono);
-    if (m) {
-      const r = await cal(dono, 'PUT', `/calendars/primary/events/${encodeURIComponent(m.evento_id)}`, corpo);
-      if (r.status === 200) return;
-      if (r.status !== 404 && r.status !== 410) return; // erro de acesso: tenta de novo na próxima mudança
-      await pool.query('DELETE FROM eventos_agenda WHERE tarefa_id=$1 AND email=$2', [id, dono]); // a pessoa apagou o evento: cria de novo
+    if (!donos.length) return;
+    const corpo = evento(t);
+    for (const dono of donos) {
+      const m = maps.find(x => x.email === dono);
+      if (m) {
+        const r = await cal(dono, 'PUT', `/calendars/primary/events/${encodeURIComponent(m.evento_id)}`, corpo);
+        if (r.status === 200) continue;
+        if (r.status !== 404 && r.status !== 410) continue; // erro de acesso: tenta de novo na próxima mudança
+        await pool.query('DELETE FROM eventos_agenda WHERE tarefa_id=$1 AND email=$2', [id, dono]); // a pessoa apagou o evento: cria de novo
+      }
+      const r = await cal(dono, 'POST', '/calendars/primary/events', corpo);
+      if (r.status === 200 && r.json && r.json.id) await pool.query('INSERT INTO eventos_agenda (tarefa_id, email, evento_id) VALUES ($1,$2,$3)', [id, dono, r.json.id]);
     }
-    const r = await cal(dono, 'POST', '/calendars/primary/events', corpo);
-    if (r.status === 200 && r.json && r.json.id) await pool.query('INSERT INTO eventos_agenda (tarefa_id, email, evento_id) VALUES ($1,$2,$3)', [id, dono, r.json.id]);
   }
   // uma fila por tarefa, para mudanças seguidas (arrastar no Gantt) não criarem eventos duplicados
   const fila = new Map();
@@ -140,7 +147,7 @@ module.exports = function criaAgenda({ pool, clientId, clientSecret, segredo, do
     return p;
   }
   async function sincronizarPessoa(email) {
-    const ids = new Set([...(await q('SELECT id FROM tarefas WHERE responsavel=$1', [email])).map(r => r.id), ...(await q('SELECT tarefa_id FROM eventos_agenda WHERE email=$1', [email])).map(r => r.tarefa_id)]);
+    const ids = new Set([...(await q('SELECT id FROM tarefas WHERE responsavel=$1', [email])).map(r => r.id), ...(await q('SELECT tarefa_id FROM tarefa_participantes WHERE email=$1', [email])).map(r => r.tarefa_id), ...(await q('SELECT tarefa_id FROM eventos_agenda WHERE email=$1', [email])).map(r => r.tarefa_id)]);
     for (const id of ids) await tarefa(id);
     return ids.size;
   }

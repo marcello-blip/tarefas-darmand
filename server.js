@@ -122,15 +122,23 @@ async function initDb() {
     for (const e of new Set(donos)) await pool.query('INSERT INTO projeto_membros (projeto_id, email, papel, adicionado_por) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [p.id, e, 'dono', 'migração']);
     for (const e of membros) if (!donos.includes(e)) await pool.query('INSERT INTO projeto_membros (projeto_id, email, papel, adicionado_por) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [p.id, e, 'membro', 'migração']);
   }
+  await pool.query('CREATE TABLE IF NOT EXISTS tarefa_participantes (tarefa_id integer NOT NULL, email text NOT NULL, PRIMARY KEY (tarefa_id, email))');
   await agenda.init();
 }
 
 // ---------- quem enxerga o quê ----------
-// projetos: só membros. Tarefa de projeto: só membros do projeto. Tarefa sem projeto: só quem criou e o responsável.
+// projetos: só membros. Tarefa de projeto: só membros do projeto. Tarefa sem projeto: quem criou, o responsável e os participantes.
 async function meusProjetos(email) { const r = await pool.query('SELECT projeto_id, papel FROM projeto_membros WHERE email=$1', [email]); return new Map(r.rows.map(x => [x.projeto_id, x.papel])); }
-const veTarefa = (t, email, ac) => t.projeto_id ? ac.has(t.projeto_id) : (t.criado_por === email || t.responsavel === email);
+const veTarefa = (t, email, ac, parts = []) => t.projeto_id ? ac.has(t.projeto_id) : (t.criado_por === email || t.responsavel === email || parts.includes(email));
 async function papelNo(projetoId, email) { if (!projetoId || !email) return null; const r = await pool.query('SELECT papel FROM projeto_membros WHERE projeto_id=$1 AND email=$2', [projetoId, email]); return r.rows[0] ? r.rows[0].papel : null; }
-async function tarefaVisivel(id, req) { const r = await pool.query('SELECT * FROM tarefas WHERE id=$1', [id]); const t = r.rows[0]; if (!t) return null; return veTarefa(t, req.email, await meusProjetos(req.email)) ? t : null; }
+// tarefa cooperativa: participantes além do responsável (aparece no painel e na agenda de todos)
+async function participantesDe(id) { const r = await pool.query('SELECT email FROM tarefa_participantes WHERE tarefa_id=$1 ORDER BY email', [id]); return r.rows.map(x => x.email); }
+async function mapaParticipantes() { const r = await pool.query('SELECT tarefa_id, email FROM tarefa_participantes ORDER BY email'); const m = new Map(); for (const x of r.rows) { if (!m.has(x.tarefa_id)) m.set(x.tarefa_id, []); m.get(x.tarefa_id).push(x.email); } return m; }
+async function gravaParticipantes(id, lista) {
+  await pool.query('DELETE FROM tarefa_participantes WHERE tarefa_id=$1', [id]);
+  for (const e of lista) await pool.query('INSERT INTO tarefa_participantes (tarefa_id, email) VALUES ($1,$2)', [id, e]);
+}
+async function tarefaVisivel(id, req) { const r = await pool.query('SELECT * FROM tarefas WHERE id=$1', [id]); const t = r.rows[0]; if (!t) return null; t._parts = await participantesDe(id); return veTarefa(t, req.email, await meusProjetos(req.email), t._parts) ? t : null; }
 const nomeDe = async e => { if (!e) return 'ninguém'; const r = await pool.query('SELECT nome FROM pessoas WHERE email=$1', [e]); return (r.rows[0] && r.rows[0].nome) || e; };
 // tarefa de projeto: quem mexe tem de ser membro, e o responsável também
 async function confereProjeto(projetoId, responsavel, email) {
@@ -164,11 +172,11 @@ const fmtData = v => { if (v == null) return null; if (v instanceof Date) return
 const brData = v => v ? v.split('-').reverse().join('/') : 'sem prazo';
 const emailOk = e => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(String(e || ''));
 
-function tarefaOut(t, nComent) {
+function tarefaOut(t, nComent, parts) {
   return {
     id: t.id, titulo: t.titulo, descricao: t.descricao || '', responsavel: t.responsavel || null, criadoPor: t.criado_por,
     projetoId: t.projeto_id || null, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo),
-    recorrencia: t.recorrencia || null,
+    recorrencia: t.recorrencia || null, participantes: parts || [],
     criadoEm: ms(t.criado_em), atualizadoEm: ms(t.atualizado_em), concluidaEm: ms(t.concluida_em), comentarios: nComent || 0,
   };
 }
@@ -489,6 +497,10 @@ app.delete('/api/projetos/:id/membros/:email', auth, async (req, res) => {
   const papel = await papelNo(id, email); if (!papel) return res.status(404).json({ erro: 'Essa pessoa não faz parte do projeto.' });
   if (papel === 'dono') { const donos = await pool.query("SELECT count(*)::int AS n FROM projeto_membros WHERE projeto_id=$1 AND papel='dono'", [id]); if (donos.rows[0].n <= 1) return res.status(400).json({ erro: 'O projeto precisa ter pelo menos um dono. Passe a posse para outra pessoa antes.' }); }
   await pool.query('DELETE FROM projeto_membros WHERE projeto_id=$1 AND email=$2', [id, email]);
+  // quem sai do projeto deixa de participar das tarefas cooperativas dele
+  for (const x of (await pool.query('SELECT p.tarefa_id FROM tarefa_participantes p JOIN tarefas t ON t.id = p.tarefa_id WHERE t.projeto_id=$1 AND p.email=$2', [id, email])).rows) {
+    await pool.query('DELETE FROM tarefa_participantes WHERE tarefa_id=$1 AND email=$2', [x.tarefa_id, email]); agenda.tarefa(x.tarefa_id);
+  }
   const ts = await pool.query("SELECT id FROM tarefas WHERE projeto_id=$1 AND responsavel=$2 AND status <> 'concluida'", [id, email]);
   for (const t of ts.rows) {
     await pool.query('UPDATE tarefas SET responsavel=NULL, atualizado_em=now() WHERE id=$1', [t.id]);
@@ -505,13 +517,13 @@ app.delete('/api/projetos/:id/membros/:email', auth, async (req, res) => {
 //  - responsável: muda o andamento até "Aguardando aprovação" e comenta;
 //  - os demais que veem: comentam.
 app.get('/api/tarefas', auth, async (req, res) => {
-  const [t, c, ac] = await Promise.all([
+  const [t, c, ac, pm] = await Promise.all([
     pool.query('SELECT * FROM tarefas ORDER BY id DESC'),
     pool.query("SELECT tarefa_id, count(*) AS n FROM comentarios WHERE tipo='nota' GROUP BY tarefa_id"),
-    meusProjetos(req.email),
+    meusProjetos(req.email), mapaParticipantes(),
   ]);
   const n = {}; for (const x of c.rows) n[x.tarefa_id] = +x.n;
-  res.json(t.rows.filter(x => veTarefa(x, req.email, ac)).map(x => tarefaOut(x, n[x.id])));
+  res.json(t.rows.filter(x => veTarefa(x, req.email, ac, pm.get(x.id) || [])).map(x => tarefaOut(x, n[x.id], pm.get(x.id))));
 });
 
 async function validaTarefa(b, parcial) {
@@ -531,7 +543,17 @@ async function validaTarefa(b, parcial) {
   if (b.prazo !== undefined) { out.prazo = dataOk(b.prazo); if (out.prazo === undefined) return erro('Prazo inválido.'); }
   if (b.inicio !== undefined) { out.inicio = dataOk(b.inicio); if (out.inicio === undefined) return erro('Data de início inválida.'); }
   if (b.recorrencia !== undefined) { out.recorrencia = b.recorrencia || null; if (out.recorrencia && !RECORRENCIAS[out.recorrencia]) return erro('Recorrência inválida.'); }
+  if (b.participantes !== undefined) {
+    if (!Array.isArray(b.participantes)) return erro('Participantes inválidos.');
+    out.participantes = [...new Set(b.participantes.map(e => String(e || '').toLowerCase()).filter(Boolean))].slice(0, 30);
+    for (const e of out.participantes) { const r = await pool.query('SELECT ativo FROM pessoas WHERE email=$1', [e]); if (!r.rows[0] || !r.rows[0].ativo) return erro(`${e} não está na equipe.`); }
+  }
   return { dados: out };
+}
+// participantes de tarefa de projeto têm de ser membros do projeto
+async function confereParticipantes(projetoId, lista, email) {
+  for (const e of lista || []) { const err = await confereProjeto(projetoId, e, email); if (err) return err; }
+  return null;
 }
 
 // tarefa recorrente concluída: cria a próxima ocorrência (mesmo responsável, projeto e duração), sem duplicar
@@ -547,6 +569,7 @@ async function proximaOcorrencia(t, autor) {
   const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, recorrencia, recorrencia_de)
     VALUES ($1,$2,$3,$4,$5,$6,'afazer',$7,$8,$9,$10) RETURNING id`, [t.titulo, t.descricao, t.responsavel, t.criado_por, t.projeto_id, t.prioridade, inicio, novoPrazo, t.recorrencia, origem]);
   const nid = r.rows[0].id;
+  await gravaParticipantes(nid, await participantesDe(t.id)); // a próxima vez continua cooperativa
   await registraEvento(nid, autor, `criou esta ocorrência da tarefa recorrente (${RECORRENCIAS[t.recorrencia].toLowerCase()}), prazo: ${brData(novoPrazo || inicio)}`);
   await registraEvento(t.id, autor, `próxima ocorrência criada para ${brData(novoPrazo || inicio)}`);
   agenda.tarefa(nid);
@@ -558,13 +581,17 @@ app.post('/api/tarefas', auth, express.json({ limit: '50kb' }), async (req, res)
   const d = { descricao: null, responsavel: null, projeto_id: null, prioridade: 2, status: 'afazer', inicio: null, prazo: null, recorrencia: null, ...v.dados };
   if (d.inicio && d.prazo && d.prazo < d.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
   const errP = await confereProjeto(d.projeto_id, d.responsavel, req.email); if (errP) return res.status(403).json({ erro: errP });
+  const parts = (d.participantes || []).filter(e => e !== d.responsavel);
+  const errPa = await confereParticipantes(d.projeto_id, parts, req.email); if (errPa) return res.status(403).json({ erro: errPa });
   const r = await pool.query(`INSERT INTO tarefas (titulo, descricao, responsavel, criado_por, projeto_id, prioridade, status, inicio, prazo, concluida_em, recorrencia)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
     [d.titulo, d.descricao, d.responsavel, req.email, d.projeto_id, d.prioridade, d.status, d.inicio, d.prazo, d.status === 'concluida' ? new Date() : null, d.recorrencia]);
   const t = r.rows[0];
+  await gravaParticipantes(t.id, parts);
   await registraEvento(t.id, req.email, `criou a tarefa (prazo: ${brData(d.prazo)}${d.recorrencia ? ', repete: ' + RECORRENCIAS[d.recorrencia].toLowerCase() : ''})`);
+  if (parts.length) await registraEvento(t.id, req.email, `tarefa cooperativa com ${(await Promise.all(parts.map(nomeDe))).join(', ')}`);
   agenda.tarefa(t.id);
-  res.json(tarefaOut(t, 0));
+  res.json(tarefaOut(t, 0, parts));
 });
 
 app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, res) => {
@@ -578,13 +605,17 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
   let enviadaParaAprovacao = false;
   if (!total) {
     const soStatus = Object.keys(d).every(k => k === 'status');
-    if (!(t.responsavel === req.email && soStatus)) return res.status(403).json({ erro: 'Você só pode mudar a situação das tarefas sob sua responsabilidade. Prazo e responsável ficam com quem criou a tarefa ou com o gestor.' });
+    const souParte = t.responsavel === req.email || (t._parts || []).includes(req.email); // responsável ou participante
+    if (!(souParte && soStatus)) return res.status(403).json({ erro: 'Você só pode mudar a situação das tarefas de que participa. Prazo, responsável e participantes ficam com quem criou a tarefa ou com o gestor.' });
     if (d.status === 'concluida') { d.status = 'aguardando'; enviadaParaAprovacao = true; }
     if (t.status === 'concluida' && d.status && d.status !== 'concluida') return res.status(403).json({ erro: 'Esta tarefa já foi aprovada. Para reabrir, fale com quem criou a tarefa ou com o gestor.' });
   }
   const n = { titulo: t.titulo, descricao: t.descricao, responsavel: t.responsavel, projeto_id: t.projeto_id, prioridade: t.prioridade, status: t.status, inicio: fmtData(t.inicio), prazo: fmtData(t.prazo), recorrencia: t.recorrencia || null, ...d };
   if (n.inicio && n.prazo && n.prazo < n.inicio) return res.status(400).json({ erro: 'O prazo não pode ser antes do início.' });
   if (d.projeto_id !== undefined || d.responsavel !== undefined) { const errP = await confereProjeto(n.projeto_id, n.responsavel, req.email); if (errP) return res.status(403).json({ erro: errP }); }
+  const partsAntes = t._parts || [];
+  const partsDepois = (d.participantes !== undefined ? d.participantes : partsAntes).filter(e => e !== n.responsavel).sort();
+  if (d.participantes !== undefined || d.projeto_id !== undefined) { const errPa = await confereParticipantes(n.projeto_id, partsDepois, req.email); if (errPa) return res.status(403).json({ erro: errPa }); }
   const concluida_em = n.status === 'concluida' ? (t.status === 'concluida' ? t.concluida_em : new Date()) : null;
   await pool.query(`UPDATE tarefas SET titulo=$2, descricao=$3, responsavel=$4, projeto_id=$5, prioridade=$6, status=$7, inicio=$8, prazo=$9, concluida_em=$10, recorrencia=$11, atualizado_em=now() WHERE id=$1`,
     [id, n.titulo, n.descricao, n.responsavel, n.projeto_id, n.prioridade, n.status, n.inicio, n.prazo, concluida_em, n.recorrencia]);
@@ -603,9 +634,15 @@ app.put('/api/tarefas/:id', auth, express.json({ limit: '50kb' }), async (req, r
   if (n.prazo !== fmtData(t.prazo)) await registraEvento(id, req.email, `mudou o prazo de ${brData(fmtData(t.prazo))} para ${brData(n.prazo)}`);
   if (n.responsavel !== t.responsavel) await registraEvento(id, req.email, `passou a tarefa de ${await nomeDe(t.responsavel)} para ${await nomeDe(n.responsavel)}`);
   if (n.prioridade !== t.prioridade) await registraEvento(id, req.email, `mudou a prioridade para ${PRIORIDADE_NOME[n.prioridade]}`);
+  if (partsDepois.join(',') !== partsAntes.join(',')) {
+    await gravaParticipantes(id, partsDepois);
+    const entrou = partsDepois.filter(e => !partsAntes.includes(e)), saiu = partsAntes.filter(e => !partsDepois.includes(e));
+    if (entrou.length) await registraEvento(id, req.email, `adicionou como participante: ${(await Promise.all(entrou.map(nomeDe))).join(', ')}`);
+    if (saiu.length) await registraEvento(id, req.email, `tirou dos participantes: ${(await Promise.all(saiu.map(nomeDe))).join(', ')}`);
+  }
   agenda.tarefa(id);
   const r2 = await pool.query('SELECT * FROM tarefas WHERE id=$1', [id]);
-  res.json({ ...tarefaOut(r2.rows[0]), enviadaParaAprovacao, proximaOcorrencia: proxima });
+  res.json({ ...tarefaOut(r2.rows[0], 0, await participantesDe(id)), enviadaParaAprovacao, proximaOcorrencia: proxima });
 });
 
 app.delete('/api/tarefas/:id', auth, async (req, res) => {
@@ -614,6 +651,7 @@ app.delete('/api/tarefas/:id', auth, async (req, res) => {
   if (!t) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
   if (!req.gestor && t.criado_por !== req.email && (await papelNo(t.projeto_id, req.email)) !== 'dono') return res.status(403).json({ erro: 'Só quem criou a tarefa, o dono do projeto ou um gestor pode apagá-la.' });
   await pool.query('DELETE FROM comentarios WHERE tarefa_id=$1', [id]);
+  await pool.query('DELETE FROM tarefa_participantes WHERE tarefa_id=$1', [id]);
   await pool.query('DELETE FROM tarefas WHERE id=$1', [id]);
   agenda.tarefa(id); // apaga o evento da agenda
   res.json({ ok: true });

@@ -65,6 +65,8 @@ nav button.ativo{background:var(--brand-soft);color:var(--brand)}
 .menu-eu .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px}
 .menu-eu .pop button:hover{background:var(--gray-soft)}
 .btn-eu{border:0;background:none;padding:0;border-radius:50%;display:grid}
+.btn-tema{width:34px;height:34px;border-radius:50%;border:1px solid var(--vidro-borda,var(--line));background:var(--campo,var(--surface));display:grid;place-items:center;font-size:16px;line-height:1;padding:0;flex:none}
+.btn-tema:hover{background:var(--surface)}
 .menu-eu .pop{min-width:290px}
 header .menu-eu .pop{background:var(--solido);border-radius:16px}
 .menu-eu .pop .tema-op{display:flex;gap:4px;padding:2px 4px 4px;border:0;margin:0}
@@ -282,7 +284,24 @@ button.kpi:hover{border-color:var(--muted)}
 .reu input[type=text],.reu input[type=date],.reu input[type=time]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;min-width:0}
 .reu .det{grid-column:2/-1;font-size:12px;color:var(--muted);margin-top:-4px}
 @media (max-width:640px){.reu{grid-template-columns:24px 1fr 1fr}.reu .reu-tit{grid-column:2/-1}.reu input[type=date]{grid-column:2/-1}.reu .det{grid-column:1/-1}}
-/* início "meu dia" */
+/* início "meu dia": tudo num mesmo grid, de ponta a ponta */
+.dia-cab{margin:2px 2px 14px}
+.dia-cab h2{margin:0 0 4px;font-size:22px}
+.dia-cab .sub{margin:0}
+.captura-linha{display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:16px;border-radius:18px}
+.captura-linha>input#qTxt{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--campo,var(--bg));font-size:15px}
+.captura-linha>input#qTxt:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+.captura-linha>input[type=date],.captura-linha>select{flex:none;padding:10px 8px;border:1px solid var(--line);border-radius:12px;background:var(--campo,var(--surface));font-size:13px}
+.captura-linha>input[type=date]{width:140px}.captura-linha>select{width:130px}
+.captura-linha .captura-bt{display:flex;gap:6px;flex:none;margin:0}
+.captura-linha .captura-bt .btn{padding:9px 14px}
+.dia-grid{grid-template-columns:minmax(0,2fr) minmax(300px,1fr)!important}
+.bloco-hoje{min-height:0!important}
+.dia-grid .card.bloco{padding:16px 18px}
+.bloco-cab h3{font-size:15.5px}
+@media (max-width:1100px){.captura-linha{flex-wrap:wrap}.captura-linha>input#qTxt{flex:1 1 100%}.captura-linha .captura-bt{margin-left:auto}}
+@media (max-width:640px){.captura-linha>input[type=date],.captura-linha>select{flex:1 1 40%;width:auto}.captura-linha .captura-bt{flex:1 1 100%}.captura-linha .captura-bt .btn{flex:1;padding:9px 6px}}
+/* (versão anterior) */
 .dia-topo{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start;margin-bottom:16px}
 .proximo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:14px}
 .proximo .btn{margin-left:auto}
@@ -321,6 +340,14 @@ button.kpi:hover{border-color:var(--muted)}
 .pd-h{flex:none;width:52px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
 .pd-mais{font-size:12px;color:var(--muted);padding-left:60px}
 @media (max-width:1000px){.dia-topo{grid-template-columns:1fr}.dia-grid{grid-template-columns:1fr}}
+.coop{display:inline-flex;align-items:center;gap:2px;font-size:12px}
+.coop .av{margin-left:-4px;box-shadow:0 0 0 2px var(--solido)}
+.coop .av:first-of-type{margin-left:2px}
+.coop-bloco{margin:-2px 0 14px;padding:10px 12px;border:1px dashed var(--line);border-radius:12px}
+.coop-liga{display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;font-size:13.5px}
+.coop-liga input{width:18px;height:18px;accent-color:var(--brand)}
+.coop-bloco .convites{margin-top:10px}
+.coop-bloco .convites input[type=checkbox]{width:16px;height:16px;flex:none;accent-color:var(--brand)}
 .membros-lista{display:flex;flex-wrap:wrap;gap:8px}
 .membro{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--surface2)}
 .membro .mn{font-size:13.5px;font-weight:500}
@@ -564,6 +591,7 @@ nav button.ativo{background:var(--surface);color:var(--brand);box-shadow:inset 0
     <div class="eu">
       <button class="btn" id="btnNarrar" title="Fale ou escreva o que precisa ser feito e a IA monta as tarefas">🎙 Narrar</button>
       <button class="btn prim" id="btnNova">+ Nova tarefa</button>
+      <button class="btn-tema" id="btnTema" aria-label="Trocar entre tema claro e escuro"></button>
       <div class="menu-eu">
         <button class="btn-eu" id="btnEu" aria-label="Minha conta"></button>
         <div class="pop oculto" id="popEu"></div>
@@ -629,7 +657,19 @@ function aplicaTema(escolha) {
   localSet('tema', escolha);
   const escuro = escolha === 'escuro' || (escolha === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
+  botaoTema();
 }
+// botão de lua/sol na barra do topo: um clique troca entre claro e escuro (o "Automático" fica no menu da conta)
+function botaoTema() {
+  const b = document.getElementById('btnTema'); if (!b) return;
+  const escuro = document.documentElement.getAttribute('data-tema') === 'escuro';
+  b.textContent = escuro ? '☀️' : '🌙'; b.title = escuro ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+}
+document.getElementById('btnTema').onclick = () => {
+  const novo = document.documentElement.getAttribute('data-tema') === 'escuro' ? 'claro' : 'escuro';
+  aplicaTema(novo); salvaPref('tema', novo);
+};
+botaoTema();
 try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (temaEscolhido() === 'auto') aplicaTema('auto'); }); } catch {}
 function salvaPref(chave, valor) { api('PUT', '/api/me/prefs', { [chave]: valor }).then(p => { S.me.prefs = p; }).catch(() => {}); }
 async function recarrega() { try { await carrega(); desenha(); } catch (e) { if (e.message !== 'login') toast(e.message, true); } }
@@ -645,7 +685,10 @@ const membrosDe = projId => { const p = projeto(projId); return p ? (p.membros |
 // quem pode ser responsável: num projeto, só os membros; sem projeto, qualquer pessoa ativa
 const candidatos = (projId, atual) => { const m = projId ? membrosDe(projId) : null; return S.pessoas.filter(p => (p.ativo && (!m || m.includes(p.email))) || p.email === atual); };
 const podeTudo = t => S.me.gestor || t.criadoPor === S.me.email || souDono(t.projetoId);
-const podeStatus = t => podeTudo(t) || (t.responsavel === S.me.email && t.status !== 'concluida');
+// tarefa cooperativa: o responsável e os participantes tratam a tarefa como sua
+const souParte = t => t.responsavel === S.me.email || (t.participantes || []).includes(S.me.email);
+const podeStatus = t => podeTudo(t) || (souParte(t) && t.status !== 'concluida');
+const avsParticipantes = t => (t.participantes || []).length ? `<span class="coop" title="Tarefa cooperativa: ${esc([t.responsavel, ...t.participantes].filter(Boolean).map(nome).join(', '))}">👥${t.participantes.slice(0, 3).map(e => avatar(e, 'p')).join('')}${t.participantes.length > 3 ? `<span class="st">+${t.participantes.length - 3}</span>` : ''}</span>` : '';
 // aprova (Aguardando aprovação → Concluído) quem criou a tarefa ou um gestor
 const podeAprovar = t => podeTudo(t);
 function situacao(t) {
@@ -689,7 +732,7 @@ function linha(t) {
   const feito = t.status === 'concluida';
   return `<div class="linha ${feito ? 'feita' : ''}" data-id="${t.id}">
     <button class="chk ${feito ? 'on' : ''}" data-chk="${t.id}" ${podeStatus(t) ? '' : 'disabled'} title="${feito ? 'Reabrir' : 'Concluir'}">${feito ? CHECK : ''}</button>
-    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status === 'aguardando' ? '<span class="selo hoje">⏳ Aguardando aprovação</span>' : t.status === 'andamento' ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁 ${esc(RECORR_NOME[t.recorrencia])}</span>` : ''}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
+    <div class="tit"><span>${esc(t.titulo)}</span><small>${chipProjeto(t.projetoId)}${t.status === 'aguardando' ? '<span class="selo hoje">⏳ Aguardando aprovação</span>' : t.status === 'andamento' ? `<span class="st">${STATUS_NOME[t.status]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁 ${esc(RECORR_NOME[t.recorrencia])}</span>` : ''}${avsParticipantes(t)}${t.comentarios ? `<span class="st">💬 ${t.comentarios}</span>` : ''}</small></div>
     <span class="pri p${t.prioridade} esconde-p">${t.prioridade >= 3 ? PRI[t.prioridade] : ''}</span>
     <span class="esconde-p">${avatar(t.responsavel, 'p')}</span>
     ${seloPrazo(t)}
@@ -704,7 +747,7 @@ function quadroHtml(ts) {
     return `<div class="coluna" data-col="${k}"><h4><span>${n}</span><span>${col.length}</span></h4>${col.map(t => `
       <div class="cartao" data-id="${t.id}" draggable="${podeStatus(t)}">
         <div class="t">${esc(t.titulo)}</div>
-        <div class="m">${seloPrazo(t)}${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁</span>` : ''}${chipProjeto(t.projetoId)}${avatar(t.responsavel, 'p')}</div>
+        <div class="m">${seloPrazo(t)}${t.prioridade >= 3 ? `<span class="pri p${t.prioridade}">${PRI[t.prioridade]}</span>` : ''}${t.recorrencia ? `<span class="st" title="Repete: ${esc(RECORR_NOME[t.recorrencia])}">🔁</span>` : ''}${chipProjeto(t.projetoId)}${avsParticipantes(t)}${avatar(t.responsavel, 'p')}</div>
         ${k === 'aguardando' && podeAprovar(t) ? `<div class="aprova"><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>` : ''}
       </div>`).join('') || (k === 'aguardando' ? '<div class="col-dica">Arraste para cá o que você terminou. Quem pediu a tarefa aprova.</div>' : '')}</div>`;
   }).join('')}</div><p class="sub" style="margin-top:8px;font-size:12.5px">Arraste os cartões entre as colunas. Quando você termina uma tarefa que outra pessoa pediu, ela vai para <b>Aguardando aprovação</b> e quem pediu aprova. A coluna Concluído mostra os últimos 14 dias.</p>`;
@@ -995,7 +1038,7 @@ function itemLembrete(l) {
 
 function vInicio() {
   const h = hoje(), eu = S.me.email, ag = S.agendaEv || { conectado: false, eventos: [] };
-  const minhas = S.tarefas.filter(t => t.responsavel === eu && t.status !== 'concluida');
+  const minhas = S.tarefas.filter(t => souParte(t) && t.status !== 'concluida');
   const atrasadas = minhas.filter(t => situacao(t) === 'atrasada').sort(ordem);
   const tarefasHoje = minhas.filter(t => t.prazo === h || (t.inicio === h && t.prazo !== h && situacao(t) !== 'atrasada')).sort((a, b) => b.prioridade - a.prioridade);
   const lemAb = S.lembretes.filter(l => !l.feito), lemHoje = lemAb.filter(l => l.data && l.data <= h), lemSemData = lemAb.filter(l => !l.data);
@@ -1044,24 +1087,20 @@ function vInicio() {
   const recolhe = (chave, titulo, n, corpo, abertoPadrao) => n ? `<details class="recolhe" data-recolhe="${chave}" ${(localGet('abre.' + chave) || (abertoPadrao ? '1' : '0')) === '1' ? 'open' : ''}><summary>${titulo} <span class="n">${n}</span></summary>${corpo}</details>` : '';
   const tipo = localGet('qTipo') === 'lembrete' ? 'lembrete' : 'tarefa';
   return `
-    <div class="dia-topo">
-      <div class="saudacao">
-        <h2>${saud}, ${esc(primeiroNome(eu))}! 👋</h2>
-        <p class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${resumo}</p>
-      </div>
-      <div class="captura card">
-        <input id="qTxt" maxlength="300" placeholder="Anotar algo… (Enter)" autocomplete="off">
-        <div class="captura-op">
-          <input type="date" id="qData" title="Data (opcional)">
-          <select id="qRec" title="Repetir">${RECORR.map(([k, n]) => `<option value="${k}">${k ? '🔁 ' + n : 'Não repete'}</option>`).join('')}</select>
-          <span class="captura-bt">
-            <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você">+ Tarefa</button>
-            <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota um lembrete (só você vê)">📌 Lembrete</button>
-            <button class="btn" data-reuniao title="Marca uma reunião no Google Agenda e convida as pessoas">📅 Reunião</button>
-            <button class="btn" data-narrar title="Fale ou escreva várias coisas e a IA organiza">🎙</button>
-          </span>
-        </div>
-      </div>
+    <div class="dia-cab">
+      <h2>${saud}, ${esc(primeiroNome(eu))}! 👋</h2>
+      <p class="sub">${(s => s.charAt(0).toUpperCase() + s.slice(1))(new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${resumo}</p>
+    </div>
+    <div class="captura-linha card">
+      <input id="qTxt" maxlength="300" placeholder="O que você precisa fazer? Escreva e aperte Enter…" autocomplete="off">
+      <input type="date" id="qData" title="Data (opcional)">
+      <select id="qRec" title="Repetir">${RECORR.map(([k, n]) => `<option value="${k}">${k ? '🔁 ' + n : 'Não repete'}</option>`).join('')}</select>
+      <span class="captura-bt">
+        <button class="btn ${tipo === 'tarefa' ? 'prim' : ''}" data-captura="tarefa" title="Cria uma tarefa para você">+ Tarefa</button>
+        <button class="btn ${tipo === 'lembrete' ? 'prim' : ''}" data-captura="lembrete" title="Anota um lembrete (só você vê)">📌 Lembrete</button>
+        <button class="btn" data-reuniao title="Marca uma reunião no Google Agenda e convida as pessoas">📅 Reunião</button>
+        <button class="btn" data-narrar title="Fale ou escreva várias coisas e a IA organiza">🎙 Narrar</button>
+      </span>
     </div>
     ${atrasadas.length ? `<details class="alerta-atraso" data-recolhe="atrasadas" ${localGet('abre.atrasadas') === '1' ? 'open' : ''}><summary>⚠️ Você tem <b>${plural(atrasadas.length, 'tarefa atrasada', 'tarefas atrasadas')}</b> <span class="st">ver</span></summary><div class="card lista">${atrasadas.map(linha).join('')}</div></details>` : ''}
     <div class="dia-grid">
@@ -1089,7 +1128,7 @@ function filtra() {
   const f = S.f, q = f.q.trim().toLowerCase();
   return S.tarefas.filter(t => {
     if (q && !(t.titulo.toLowerCase().includes(q) || (t.descricao || '').toLowerCase().includes(q))) return false;
-    if (f.resp === '_eu' && t.responsavel !== S.me.email) return false;
+    if (f.resp === '_eu' && !souParte(t)) return false;
     if (f.resp === '_sem' && t.responsavel) return false;
     if (f.resp && f.resp[0] !== '_' && t.responsavel !== f.resp) return false;
     if (f.proj === '_sem' && t.projetoId) return false;
@@ -1205,6 +1244,10 @@ function janelaTarefa(t, padrao) {
       <label class="campo"><span>Prioridade</span><select id="tPri" ${dis}>${[4, 3, 2, 1].map(k => opt(k, PRI[k], t.prioridade)).join('')}</select></label>
       <label class="campo"><span>Repetir</span><select id="tRec" ${dis}>${RECORR.map(([k, n]) => opt(k, n, t.recorrencia || '')).join('')}</select></label>
     </div>
+    <div class="coop-bloco">
+      <label class="coop-liga"><input type="checkbox" id="tCoop" ${(t.participantes || []).length ? 'checked' : ''} ${dis}> <b>👥 Tarefa cooperativa</b> <span class="dica">aparece no painel e na agenda de todos os participantes, e qualquer um pode atualizar o andamento</span></label>
+      <div id="tParts" class="convites" style="${(t.participantes || []).length ? '' : 'display:none'}"></div>
+    </div>
     ${!nova && t.status === 'aguardando' && podeAprovar(t) ? `<div class="aviso" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1">⏳ ${esc(primeiroNome(t.responsavel))} terminou esta tarefa e está esperando sua aprovação.</span><button class="btn peq prim" data-aprova="${t.id}">✅ Aprovar</button><button class="btn peq" data-devolve="${t.id}">↩ Devolver</button></div>` : ''}
     ${!nova && t.recorrencia ? `<p class="st" style="margin:-6px 0 12px">🔁 Ao concluir, a próxima vez (${esc(RECORR_NOME[t.recorrencia].toLowerCase())}) é criada sozinha.</p>` : ''}
     ${nova ? '' : `<div class="hist"><h4>Comentários e histórico</h4><div id="tHist"><div class="st">Carregando…</div></div>
@@ -1213,18 +1256,33 @@ function janelaTarefa(t, padrao) {
   const rodape = `${!nova && podeTudo(t) ? '<button class="btn perigo esq" id="tDel">Apagar</button>' : ''}<button class="btn" data-fecha2>${st ? 'Cancelar' : 'Fechar'}</button>${st ? `<button class="btn prim" id="tSalva">${nova ? 'Criar tarefa' : 'Salvar'}</button>` : ''}`;
   const j = abreJanela(nova ? 'Nova tarefa' : 'Tarefa', corpo, rodape);
   // ao trocar o projeto, o responsável só pode ser alguém que faz parte dele
+  // participantes da tarefa cooperativa (num projeto, só membros; o responsável não entra na lista)
+  const partsSel = new Set(t.participantes || []);
+  const desenhaParts = () => {
+    const box = j.querySelector('#tParts'); if (!box) return;
+    const pid = j.querySelector('#tProj').value ? +j.querySelector('#tProj').value : null, resp = j.querySelector('#tResp').value;
+    const cs = candidatos(pid, null).filter(p => p.email !== resp);
+    box.innerHTML = cs.map(p => `<label><input type="checkbox" value="${esc(p.email)}" data-part ${partsSel.has(p.email) ? 'checked' : ''} ${dis}> ${esc(p.nome)}${p.email === S.me.email ? ' (eu)' : ''}</label>`).join('') || '<span class="dica">Ninguém mais pode participar (num projeto, só os membros).</span>';
+  };
+  desenhaParts();
+  j.querySelector('#tCoop').onchange = e => { j.querySelector('#tParts').style.display = e.target.checked ? '' : 'none'; };
+  j.querySelector('#tParts').addEventListener('change', e => { if (e.target.matches('[data-part]')) { if (e.target.checked) partsSel.add(e.target.value); else partsSel.delete(e.target.value); } });
+  j.querySelector('#tResp').addEventListener('change', desenhaParts);
   const selP = j.querySelector('#tProj');
   if (selP) selP.onchange = () => {
     const r = j.querySelector('#tResp'), atual = r.value, pid = selP.value ? +selP.value : null;
     r.innerHTML = opcoesResp(pid, '');
     if (atual && [...r.options].some(o => o.value === atual)) r.value = atual;
     else if (atual) toast(`${primeiroNome(atual)} não faz parte deste projeto. Escolha outro responsável ou convide a pessoa para o projeto.`, true);
+    desenhaParts();
   };
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   const salva = j.querySelector('#tSalva');
   if (salva) salva.onclick = async () => {
     const dados = tudo ? { titulo: $('#tTit').value, descricao: $('#tDesc').value, responsavel: $('#tResp').value || null, inicio: $('#tIni').value || null, prazo: $('#tPrazo').value || null,
-      status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null, recorrencia: $('#tRec').value || null } : { status: $('#tSt').value };
+      status: $('#tSt').value, prioridade: +$('#tPri').value, projetoId: $('#tProj').value ? +$('#tProj').value : null, recorrencia: $('#tRec').value || null,
+      participantes: $('#tCoop').checked ? [...j.querySelectorAll('[data-part]:checked')].map(x => x.value) : [] } : { status: $('#tSt').value };
+    if (tudo && $('#tCoop').checked && !dados.participantes.length) { toast('Escolha pelo menos um participante para a tarefa cooperativa.', true); return; }
     if (tudo && !dados.titulo.trim()) { toast('Dê um título à tarefa.', true); $('#tTit').focus(); return; }
     if (tudo && dados.inicio && dados.prazo && dados.prazo < dados.inicio) { toast('O prazo não pode ser antes do início.', true); return; }
     salva.disabled = true;
