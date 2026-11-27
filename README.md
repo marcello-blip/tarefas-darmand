@@ -113,11 +113,14 @@ O sistema passou a ter **módulos** numa barra lateral: **Início · Vendas · P
 
 `npm run dev` carrega os dados das lojas da pasta da tarefa diária (`%LOCALAPPDATA%\DarmandPainel\kit\export` e `kit\db`), quando ela existe. Entradas de teste: `gestor@darmand.com.br` (diretoria), `gerente@darmand.com.br` (Macapá) e `gerente2@darmand.com.br` (Marabá).
 
-### Ligar os dados das lojas em produção
+### Mudança do portal antigo (uma vez)
 
-Os módulos do portal só aparecem quando existem dados de lojas. Há dois jeitos:
+Os módulos do portal só aparecem quando existem dados de lojas no banco. Para trazer tudo do portal antigo:
 
-1. **Rodar junto com o portal antigo (recomendado para começar):** crie a variável `PORTAL_DATABASE_URL` no serviço, com o endereço **público** do Postgres do portal antigo. A Gestão passa a ler e gravar os mesmos dados (vendas, metas, comunicados, vínculos de gerentes). Nada é copiado e a tarefa diária não muda.
-2. **Banco próprio (virada definitiva):** crie `INGEST_TOKEN`, envie os dados para `POST /api/ingest` e aponte a tarefa diária para este endereço.
+1. No serviço, crie `INGEST_TOKEN` (pode ser o mesmo valor que o portal antigo usava) e `PORTAL_DATABASE_URL`, com o endereço **público** do Postgres do portal antigo.
+2. Na subida seguinte, o sistema copia todos os dados para o banco próprio (vendas, metas, comunicados, cientes, vínculos de gerentes, personagens) e cadastra os gerentes vinculados na equipe. A cópia só acontece enquanto o banco próprio não tem lojas; se parar no meio, recomeça na subida seguinte.
+3. Confira em `/healthz`: `portal.lojas` fica `true` e `portal.importacao` mostra o andamento.
+4. Aponte a tarefa diária para este endereço (arquivo `railway.json` da pasta `.darmand-portal`, na pasta do usuário do Windows).
+5. Apague `PORTAL_DATABASE_URL` e, quando estiver tudo conferido, o projeto do portal antigo.
 
 Quem é "diretoria" nos módulos do portal é quem está em `ADMIN_EMAILS` deste serviço.

@@ -1,6 +1,6 @@
 // Módulos do Portal do Gerente (vendas, metas, produto, equipe de vendas, comunicados) dentro da Gestão DARMAND.
 // - Dados: tabela docs (coleção + id + JSON), no mesmo formato do portal antigo. A tarefa diária grava por /api/ingest (token INGEST_TOKEN).
-//   Com PORTAL_DATABASE_URL, a tabela docs é lida e gravada no Postgres do portal antigo (os dois sistemas mostram os mesmos dados, sem cópia).
+//   Mudança do portal antigo: com PORTAL_DATABASE_URL, na primeira subida tudo é copiado do Postgres do portal para o banco próprio (uma vez só).
 // - Página: portal/painel-lojas.html, aberta dentro da Gestão (em /painel); public/portal-shim.js liga a página às rotas /papi.
 // - Quem vê: a diretoria (ADMIN_EMAILS) vê todas as lojas; quem está vinculado a uma loja vê os dados; os demais não veem nada.
 // - Integração com as tarefas: comunicado com "exigir ação" vira uma tarefa para o gerente de cada loja, e a diretoria acompanha por loja.
@@ -12,8 +12,8 @@ const COLS = new Set(['lojas', 'vendas', 'analise', 'base', 'ano', 'metas', 'eco
 const UPSERT = `INSERT INTO docs(col,id,data) VALUES($1,$2,$3) ON CONFLICT (col,id) DO UPDATE SET data=EXCLUDED.data, version=docs.version+1, updated_at=now()`;
 
 module.exports = function criaPortal({ app, express, pool, docsPool, auth, isAdmin, dominio, iguais, agenda, hojeSP }) {
-  // os dados das lojas (tabela docs) podem ficar em outro Postgres: o do portal antigo, enquanto os dois sistemas rodam juntos
-  const dpool = docsPool || pool;
+  // os dados das lojas (tabela docs) ficam no banco próprio; docsPool é só a origem da cópia única do portal antigo
+  const dpool = pool;
   const INGEST_TOKEN = process.env.INGEST_TOKEN || '';
   const J = v => JSON.stringify(v); // jsonb sempre entra como texto JSON (vale para objeto, lista e número)
   const grava = (col, id, data, c) => (c || dpool).query(UPSERT, [col, id, J(data)]);
@@ -23,15 +23,46 @@ module.exports = function criaPortal({ app, express, pool, docsPool, auth, isAdm
   const ehGerente = req => !!(req.vinc && (req.vinc.papel || 'gerente') === 'gerente');
 
   async function init() {
-    // se o banco do portal antigo estiver fora do ar, a Gestão sobe do mesmo jeito (só os módulos do portal ficam indisponíveis)
-    try {
-      await dpool.query(`CREATE TABLE IF NOT EXISTS docs (
-        col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, version integer NOT NULL DEFAULT 1,
-        updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (col, id))`);
-    } catch (e) { if (!docsPool) throw e; console.error('portal: não consegui preparar a tabela docs no banco do portal:', e.message); }
+    await pool.query(`CREATE TABLE IF NOT EXISTS docs (
+      col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, version integer NOT NULL DEFAULT 1,
+      updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (col, id))`);
     // tarefa que nasceu de um comunicado: origem = 'recado:<id do comunicado>'
     try { await pool.query('ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS origem text'); } catch (e) { if (process.env.DATABASE_URL !== 'memoria') throw e; }
   }
+
+  // ---------- mudança do portal antigo: copia tudo, uma vez, para o banco próprio ----------
+  // Só roda quando o banco próprio ainda não tem lojas. As lojas são copiadas por último: se a cópia parar no meio,
+  // na próxima subida ela recomeça (o que já foi copiado não é gravado de novo).
+  const estado = { importacao: docsPool ? 'pendente' : 'sem origem' };
+  async function importaDoPortal() {
+    if (!docsPool) return null;
+    if ((await pool.query("SELECT id FROM docs WHERE col='lojas' LIMIT 1")).rows[0]) { estado.importacao = 'já feita'; return null; }
+    estado.importacao = 'copiando';
+    const cont = {};
+    for (const col of [...[...COLS].filter(c => c !== 'lojas'), 'lojas']) {
+      const ids = (await docsPool.query('SELECT id FROM docs WHERE col=$1', [col])).rows.map(r => r.id);
+      cont[col] = 0;
+      for (const id of ids) { // um por vez: alguns documentos são grandes
+        const r = (await docsPool.query('SELECT data, version, updated_at FROM docs WHERE col=$1 AND id=$2', [col, id])).rows[0]; if (!r) continue;
+        await pool.query('INSERT INTO docs(col,id,data,version,updated_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT (col,id) DO NOTHING', [col, id, J(r.data), r.version || 1, r.updated_at || new Date()]);
+        cont[col]++;
+      }
+    }
+    // gerentes vinculados entram na equipe com o nome e a foto que tinham no portal (para já receberem tarefas)
+    let pessoas = 0;
+    try {
+      const us = new Map((await docsPool.query('SELECT email, nome, foto FROM usuarios')).rows.map(u => [String(u.email).toLowerCase(), u]));
+      for (const g of (await pool.query("SELECT id FROM docs WHERE col='gerentes'")).rows) {
+        const e = String(g.id).toLowerCase(), u = us.get(e);
+        const r = await pool.query(`INSERT INTO pessoas (email, nome, foto, papel) VALUES ($1,$2,$3,'membro') ON CONFLICT (email) DO NOTHING`, [e, (u && u.nome) || e.split('@')[0], (u && u.foto) || '']);
+        pessoas += r.rowCount || 0;
+      }
+    } catch (e) { console.error('portal: não copiei os nomes dos gerentes:', e.message); }
+    dadosEm = 0; estado.importacao = 'feita agora'; estado.copiados = cont;
+    console.log('Portal: dados copiados do portal antigo:', JSON.stringify(cont), '· pessoas novas:', pessoas);
+    return cont;
+  }
+  const situacao = async () => ({ lojas: await temDados(), importacao: estado.importacao });
 
   // acesso ao portal: diretoria, ou vínculo com uma loja
   // sem nenhuma loja gravada (banco novo, antes da primeira carga), os módulos do portal nem aparecem
@@ -298,5 +329,5 @@ module.exports = function criaPortal({ app, express, pool, docsPool, auth, isAdm
     return n;
   }
 
-  return { init, acesso, semeia, grava, le };
+  return { init, acesso, semeia, grava, le, importaDoPortal, situacao, estado };
 };

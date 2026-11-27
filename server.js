@@ -203,7 +203,7 @@ app.use(compression());
 app.use(cookieParser());
 app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.set('Referrer-Policy', 'same-origin'); res.set('X-Frame-Options', 'SAMEORIGIN'); next(); });
 
-app.get('/healthz', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, versao: String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null }));
+app.get('/healthz', async (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, versao: String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null, portal: await portal.situacao().catch(() => null) }));
 
 // ---------- logo e ícones (públicos: o login também usa) ----------
 app.get('/marca/:arq', (req, res) => {
@@ -265,7 +265,7 @@ async function auth(req, res, next) {
 const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json({ erro: 'Só gestores podem fazer isso.' });
 
 // ---------- módulos do portal (vendas, produto, pessoas) ----------
-// PORTAL_DATABASE_URL (opcional): Postgres do portal antigo, de onde vêm os dados das lojas enquanto os dois sistemas rodam juntos
+// PORTAL_DATABASE_URL (só para a mudança): Postgres do portal antigo, de onde os dados das lojas são copiados uma vez para o banco próprio
 const docsPool = process.env.PORTAL_DATABASE_URL && process.env.DATABASE_URL !== 'memoria'
   ? new pg.Pool({ connectionString: process.env.PORTAL_DATABASE_URL, max: 5, ssl: process.env.PGSSL === 'disable' || process.env.PORTAL_DATABASE_URL.includes('railway.internal') ? false : { rejectUnauthorized: false } }) : null;
 if (docsPool) docsPool.on('error', e => console.error('portal: conexão com o banco do portal caiu:', e.message));
@@ -787,4 +787,4 @@ app.use((err, req, res, next) => {
 });
 process.on('unhandledRejection', e => console.error('promessa rejeitada sem tratamento:', e));
 
-initDb().then(() => app.listen(PORT, () => console.log(`Gestão de Tarefas no ar na porta ${PORT}${DEV ? ' (modo de teste: http://localhost:' + PORT + '/login)' : ''}`))).catch(e => { console.error(e); process.exit(1); });
+initDb().then(() => app.listen(PORT, () => { portal.importaDoPortal().catch(e => { portal.estado.importacao = 'falhou: ' + e.message; console.error('Portal: a cópia do portal antigo falhou (tento de novo na próxima subida):', e.message); }); console.log(`Gestão de Tarefas no ar na porta ${PORT}${DEV ? ' (modo de teste: http://localhost:' + PORT + '/login)' : ''}`); })).catch(e => { console.error(e); process.exit(1); });
