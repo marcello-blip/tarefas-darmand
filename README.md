@@ -117,10 +117,11 @@ O sistema passou a ter **módulos** numa barra lateral: **Início · Vendas · P
 
 Os módulos do portal só aparecem quando existem dados de lojas no banco. Para trazer tudo do portal antigo:
 
-1. No serviço, crie `INGEST_TOKEN` (pode ser o mesmo valor que o portal antigo usava) e `PORTAL_DATABASE_URL`, com o endereço **público** do Postgres do portal antigo.
-2. Na subida seguinte, o sistema copia todos os dados para o banco próprio (vendas, metas, comunicados, cientes, vínculos de gerentes, personagens) e cadastra os gerentes vinculados na equipe. A cópia só acontece enquanto o banco próprio não tem lojas; se parar no meio, recomeça na subida seguinte.
-3. Confira em `/healthz`: `portal.lojas` fica `true` e `portal.importacao` mostra o andamento.
-4. Aponte a tarefa diária para este endereço (arquivo `railway.json` da pasta `.darmand-portal`, na pasta do usuário do Windows).
-5. Apague `PORTAL_DATABASE_URL` e, quando estiver tudo conferido, o projeto do portal antigo.
+1. No serviço, crie `INGEST_TOKEN` com o **mesmo valor** que o portal antigo usa.
+2. Na subida seguinte, o sistema busca todos os dados no portal antigo, pelas rotas `/api/ingest/lista`, `/api/ingest/doc` e `/api/ingest/usuarios` (protegidas pelo token), e grava no banco próprio: vendas, metas, comunicados, cientes, vínculos de gerentes, personagens. Os gerentes vinculados entram na equipe.
+3. A cópia só acontece enquanto o banco próprio não tem lojas. As lojas vêm por último: se a cópia parar no meio, ela recomeça sozinha (a cada 2 minutos, e a cada nova subida).
+4. Confira em `/healthz`: `portal.lojas` fica `true` e `portal.importacao` mostra o andamento.
+5. Aponte a tarefa diária para este endereço (arquivo `railway.json` da pasta `.darmand-portal`, na pasta do usuário do Windows).
+6. Depois de uma carga diária conferida, o projeto do portal antigo pode ser apagado.
 
 Quem é "diretoria" nos módulos do portal é quem está em `ADMIN_EMAILS` deste serviço.

@@ -265,11 +265,23 @@ async function auth(req, res, next) {
 const soGestor = (req, res, next) => req.gestor ? next() : res.status(403).json({ erro: 'Só gestores podem fazer isso.' });
 
 // ---------- módulos do portal (vendas, produto, pessoas) ----------
-// PORTAL_DATABASE_URL (só para a mudança): Postgres do portal antigo, de onde os dados das lojas são copiados uma vez para o banco próprio
-const docsPool = process.env.PORTAL_DATABASE_URL && process.env.DATABASE_URL !== 'memoria'
-  ? new pg.Pool({ connectionString: process.env.PORTAL_DATABASE_URL, max: 5, ssl: process.env.PGSSL === 'disable' || process.env.PORTAL_DATABASE_URL.includes('railway.internal') ? false : { rejectUnauthorized: false } }) : null;
-if (docsPool) docsPool.on('error', e => console.error('portal: conexão com o banco do portal caiu:', e.message));
-const portal = require('./portal')({ app, express, pool, docsPool, auth, isAdmin: isAdminFixo, dominio: ALLOWED_DOMAIN, iguais, agenda, hojeSP });
+// Mudança do portal antigo: a cópia única busca os dados pelo próprio portal (HTTPS), com o mesmo token da tarefa diária.
+// PORTAL_ORIGEM_URL troca o endereço de origem; vazio ("") desliga a cópia.
+const ORIGEM_URL = (process.env.PORTAL_ORIGEM_URL ?? 'https://portal-darmand-production.up.railway.app').replace(/\/$/, '');
+const origemPortal = ORIGEM_URL && process.env.INGEST_TOKEN && (process.env.DATABASE_URL !== 'memoria' || process.env.PORTAL_ORIGEM_URL) ? (() => {
+  const pega = async caminho => {
+    const r = await fetch(ORIGEM_URL + caminho, { headers: { Authorization: 'Bearer ' + process.env.INGEST_TOKEN }, signal: AbortSignal.timeout(120000) });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`o portal antigo respondeu ${r.status} em ${caminho.split('/').slice(0, 4).join('/')}`);
+    return r.json();
+  };
+  return {
+    ids: async col => ((await pega('/api/ingest/lista/' + encodeURIComponent(col))) || []).map(x => x.id),
+    doc: (col, id) => pega(`/api/ingest/doc/${encodeURIComponent(col)}/${encodeURIComponent(id)}`),
+    usuarios: () => pega('/api/ingest/usuarios'), // null enquanto o portal antigo não tiver as rotas de cópia
+  };
+})() : null;
+const portal = require('./portal')({ app, express, pool, origem: origemPortal, auth, isAdmin: isAdminFixo, dominio: ALLOWED_DOMAIN, iguais, agenda, hojeSP });
 
 // ---------- página ----------
 app.get('/', auth, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public', 'app.html')));
@@ -787,4 +799,4 @@ app.use((err, req, res, next) => {
 });
 process.on('unhandledRejection', e => console.error('promessa rejeitada sem tratamento:', e));
 
-initDb().then(() => app.listen(PORT, () => { portal.importaDoPortal().catch(e => { portal.estado.importacao = 'falhou: ' + e.message; console.error('Portal: a cópia do portal antigo falhou (tento de novo na próxima subida):', e.message); }); console.log(`Gestão de Tarefas no ar na porta ${PORT}${DEV ? ' (modo de teste: http://localhost:' + PORT + '/login)' : ''}`); })).catch(e => { console.error(e); process.exit(1); });
+initDb().then(() => app.listen(PORT, () => { (function copia(n) { portal.importaDoPortal().catch(e => { portal.estado.importacao = 'falhou: ' + e.message; console.error('Portal: a cópia do portal antigo falhou:', e.message); if (n < 15) setTimeout(() => copia(n + 1), 120000).unref(); }); })(1); console.log(`Gestão de Tarefas no ar na porta ${PORT}${DEV ? ' (modo de teste: http://localhost:' + PORT + '/login)' : ''}`); })).catch(e => { console.error(e); process.exit(1); });
