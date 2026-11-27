@@ -260,6 +260,15 @@ button.kpi:hover{border-color:var(--muted)}
 .recolhe[open]>summary::before{content:'▾'}
 .recolhe>summary .n{color:var(--muted);font-weight:500}
 .recolhe[open]>summary{margin-bottom:8px}
+.membros-lista{display:flex;flex-wrap:wrap;gap:8px}
+.membro{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--surface2)}
+.membro .mn{font-size:13.5px;font-weight:500}
+.membro select{padding:3px 4px;border:1px solid var(--line);border-radius:7px;background:var(--surface);font-size:12px}
+.membro .tag{margin:0}
+.membros-acoes{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.membros-acoes select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:220px;max-width:100%}
+.convites{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:6px 10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px}
+.convites label{display:flex;align-items:center;gap:6px;font-size:13.5px;padding:3px 0}
 .pisca{animation:pisca 1.2s}
 @keyframes pisca{0%,100%{box-shadow:var(--shadow)}30%{box-shadow:0 0 0 3px var(--brand)}}
 .lem-grupo{margin-top:8px}
@@ -464,7 +473,12 @@ const pessoa = e => S.pessoas.find(p => p.email === e);
 const nome = e => e ? ((pessoa(e) || {}).nome || e) : 'Sem responsável';
 const primeiroNome = e => nome(e).split(' ')[0];
 const projeto = id => S.projetos.find(p => p.id === id);
-const podeTudo = t => S.me.gestor || t.criadoPor === S.me.email;
+// projetos são privados: cada um só recebe os projetos dos quais é membro
+const souDono = projId => !!projId && (projeto(projId) || {}).meuPapel === 'dono';
+const membrosDe = projId => { const p = projeto(projId); return p ? (p.membros || []).map(m => m.email) : null; };
+// quem pode ser responsável: num projeto, só os membros; sem projeto, qualquer pessoa ativa
+const candidatos = (projId, atual) => { const m = projId ? membrosDe(projId) : null; return S.pessoas.filter(p => (p.ativo && (!m || m.includes(p.email))) || p.email === atual); };
+const podeTudo = t => S.me.gestor || t.criadoPor === S.me.email || souDono(t.projetoId);
 const podeStatus = t => podeTudo(t) || (t.responsavel === S.me.email && t.status !== 'concluida');
 // aprova (Aguardando aprovação → Concluído) quem criou a tarefa ou um gestor
 const podeAprovar = t => podeTudo(t);
@@ -577,7 +591,7 @@ function gantt(ts, agrupar, opts = {}) {
       barra = `<div class="g-barra ${cls} ${mexe ? 'mexe' : ''} ${cabe ? 'cabe' : ''}" data-barra="${t.id}" style="left:${x(d[0])}px;width:${w}px" title="${esc(t.titulo)} · ${brData(d[0])} a ${brData(d[1])}">
         ${mexe ? '<span class="al e" data-al="e"></span><span class="al d" data-al="d"></span>' : ''}<span class="lb">${esc(t.titulo)}</span></div>`;
     } else if (mexe) barra = `<div class="g-vazia" data-sem-data="${t.id}" title="Clique no dia para marcar a data desta tarefa"></div>`;
-    const sel = mexe ? `<select data-designa="${t.id}" title="Responsável"><option value="">—</option>${ativos.map(p => `<option value="${esc(p.email)}" ${p.email === t.responsavel ? 'selected' : ''}>${esc(p.nome.split(' ')[0])}</option>`).join('')}</select>` : avatar(t.responsavel, 'p');
+    const sel = mexe ? `<select data-designa="${t.id}" title="Responsável"><option value="">—</option>${candidatos(t.projetoId, t.responsavel).map(p => `<option value="${esc(p.email)}" ${p.email === t.responsavel ? 'selected' : ''}>${esc(p.nome.split(' ')[0])}</option>`).join('')}</select>` : avatar(t.responsavel, 'p');
     return `<div class="g-linha"><div class="g-rot"><span class="nm" data-id="${t.id}" title="${esc(t.titulo)}">${esc(t.titulo)}</span>${sel}</div>${pista(barra, `data-pista="${t.id}" data-ini="${ini}" data-px="${px}"`)}</div>`;
   };
   // grupos
@@ -618,7 +632,30 @@ function vCronograma() {
 }
 
 // ---------------- projetos ----------------
-const podeEditarProj = p => S.me.gestor || p.responsavel === S.me.email;
+const podeEditarProj = p => p.meuPapel === 'dono';
+// opções de responsável na janela da tarefa (num projeto, só os membros)
+function opcoesResp(projId, sel) {
+  const o = (v, t) => `<option value="${esc(v)}" ${String(sel ?? '') === String(v) ? 'selected' : ''}>${esc(t)}</option>`;
+  return o('', 'Sem responsável') + candidatos(projId, sel).map(p => o(p.email, p.nome + (p.email === S.me.email ? ' (eu)' : ''))).join('');
+}
+// bloco de membros do projeto: só membros veem o projeto; donos convidam, removem e passam a posse
+function membrosHtml(p) {
+  const dono = p.meuPapel === 'dono', ms = (p.membros || []).slice().sort((a, b) => (a.papel !== 'dono') - (b.papel !== 'dono') || nome(a.email).localeCompare(nome(b.email)));
+  const fora = S.pessoas.filter(x => x.ativo && !ms.some(m => m.email === x.email));
+  return `<div class="card bloco membros" style="margin-bottom:16px">
+    <div class="bloco-cab"><h3>👥 Membros <span class="n">${ms.length}</span></h3><span class="dica">🔒 Só os membros veem este projeto e as tarefas dele.</span></div>
+    <div class="membros-lista">${ms.map(m => `<div class="membro">
+      ${avatar(m.email, 'p')}<span class="mn">${esc(nome(m.email))}${m.email === S.me.email ? ' <span class="st">(você)</span>' : ''}</span>
+      ${dono && m.email !== S.me.email ? `<select data-papel-membro="${esc(m.email)}" title="Papel"><option value="membro" ${m.papel !== 'dono' ? 'selected' : ''}>Membro</option><option value="dono" ${m.papel === 'dono' ? 'selected' : ''}>Dono</option></select>
+        <button class="lem-x" data-remove-membro="${esc(m.email)}" title="Remover do projeto">×</button>` : `<span class="tag" style="${m.papel === 'dono' ? '' : 'background:var(--gray-soft);color:var(--muted)'}">${m.papel === 'dono' ? 'dono' : 'membro'}</span>`}
+    </div>`).join('')}</div>
+    <div class="membros-acoes">
+      ${dono ? (fora.length ? `<select id="mNovo"><option value="">Convidar alguém da equipe…</option>${fora.map(x => `<option value="${esc(x.email)}">${esc(x.nome)}${x.cargo ? ' · ' + esc(x.cargo) : ''}</option>`).join('')}</select><button class="btn peq prim" data-convida="${p.id}">+ Convidar</button>` : '<span class="dica">Todas as pessoas da equipe já fazem parte deste projeto.</span>') : ''}
+      <button class="btn peq" data-sair-proj="${p.id}" style="margin-left:auto">Sair do projeto</button>
+    </div>
+    ${dono ? '<p class="dica" style="margin:8px 0 0">Donos editam o projeto e convidam pessoas. Ao remover alguém, as tarefas abertas dele(a) neste projeto ficam sem responsável.</p>' : ''}
+  </div>`;
+}
 function resumoProj(p) {
   const ts = S.tarefas.filter(t => t.projetoId === p.id), feitas = ts.filter(t => t.status === 'concluida').length;
   const ab = ts.filter(t => t.status !== 'concluida'), atr = ab.filter(t => situacao(t) === 'atrasada').length;
@@ -650,8 +687,9 @@ function vProjetos() {
   const opt = (v, t) => `<option value="${v}" ${S.pf === v ? 'selected' : ''}>${t}</option>`;
   return `<h2>Projetos</h2><p class="sub">Andamento de cada projeto: quanto já foi feito, o que está atrasado e quanto tempo falta.</p>
     <div class="filtros"><select id="pFiltro">${opt('abertos', 'Abertos')}${opt('todos', 'Todos')}${PROJ_STATUS.map(([k, n]) => opt(k, n)).join('')}</select>
-    ${S.me.gestor ? '<button class="btn prim" id="btnAddProj" style="margin-left:auto">+ Novo projeto</button>' : ''}</div>
-    ${cards ? `<div class="projs">${cards}</div>` : `<div class="card vazio">Nenhum projeto aqui. ${S.me.gestor ? 'Cadastre um em "+ Novo projeto" (ex.: Inauguração Loja Norte, Campanha de Natal).' : ''}</div>`}`;
+    <span class="dica" style="margin-left:auto">🔒 Você só vê os projetos dos quais faz parte.</span>
+    <button class="btn prim" id="btnAddProj">+ Novo projeto</button></div>
+    ${cards ? `<div class="projs">${cards}</div>` : '<div class="card vazio">Você ainda não faz parte de nenhum projeto aqui. Crie um em "+ Novo projeto" e convide as pessoas, ou peça para alguém te convidar.</div>'}`;
 }
 function vProjeto() {
   const p = projeto(S.projetoSel); if (!p) { S.projetoSel = null; return vProjetos(); }
@@ -671,9 +709,10 @@ function vProjeto() {
         <div><small>Tarefas</small><b>${r.feitas} de ${r.ts.length} concluídas</b></div>
         <div><small>Abertas</small><b>${r.ab}</b></div>
         <div><small>Atrasadas</small><b style="color:${r.atr ? 'var(--red)' : 'inherit'}">${r.atr}</b></div>
-        <div><small>Pessoas envolvidas</small><b style="display:flex;gap:2px">${[...new Set(r.ts.map(t => t.responsavel).filter(Boolean))].map(e => avatar(e, 'p')).join('') || '—'}</b></div>
+        <div><small>Membros</small><b style="display:flex;gap:2px">${(p.membros || []).map(m => avatar(m.email, 'p')).join('') || '—'}</b></div>
       </div>
     </div>
+    ${membrosHtml(p)}
     <div class="secao"><h3>Cronograma do projeto <div class="alterna" style="margin-left:auto"><button data-escala="semanas" class="${salvaEsc === 'semanas' ? 'ativo' : ''}">Dias</button><button data-escala="meses" class="${salvaEsc === 'meses' ? 'ativo' : ''}">Meses</button></div></h3>
       ${gantt(r.ts, 'pessoa')}</div>
     <div class="secao"><h3>Tarefas abertas <span class="n">${ab.length}</span></h3>${listaHtml(ab, 'Nenhuma tarefa aberta neste projeto.')}</div>
@@ -783,7 +822,7 @@ function vInicio() {
       ${chip(minhas.filter(t => t.prazo > hj0 && t.prazo <= s7).length, 'próximos 7 dias', 'azul', 'data-ir="semana" data-eu')}
       ${chip(aprovar.length, 'para aprovar', 'roxo', 'data-rola="aprovar"')}
       ${chip(lemHoje.length, 'lembretes hoje', 'verde', 'data-rola="mural"')}
-      ${S.me.gestor ? chip(atras.length, 'atrasadas na equipe', 'vermelho', 'data-ir="atrasadas"') : ''}
+      ${S.me.gestor ? chip(atras.length, 'atrasadas nos seus projetos', 'vermelho', 'data-ir="atrasadas"') : ''}
     </div>
     <div class="inicio-grid">
       <div class="col-principal">
@@ -887,7 +926,7 @@ function vEquipe() {
       ${S.me.gestor || p.email === S.me.email ? `<td><button class="btn peq" data-edita-pessoa="${esc(p.email)}">Editar</button></td>` : '<td></td>'}
     </tr>`;
   }).join('');
-  return `<h2>Equipe</h2><p class="sub">Carga de trabalho e cumprimento de prazos de cada pessoa. Clique numa pessoa para ver as tarefas dela.</p>
+  return `<h2>Equipe</h2><p class="sub">Carga de trabalho e cumprimento de prazos de cada pessoa. Clique numa pessoa para ver as tarefas dela.<br><span class="dica">🔒 Os números contam só as tarefas que você enxerga: as dos seus projetos e as sem projeto que você criou ou recebeu.</span></p>
     ${S.me.gestor ? '<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn" id="btnAddPessoa">+ Adicionar pessoa</button></div>' : ''}
     <div class="card" style="overflow-x:auto"><table class="tabela">
       <thead><tr><th>Pessoa</th><th>Abertas</th><th>Atrasadas</th><th class="esconde-p">Vencem em 7 dias</th><th class="esconde-p">Concluídas (30 dias)</th><th class="esconde-p">No prazo (30 dias)</th><th></th></tr></thead>
@@ -917,7 +956,7 @@ function janelaTarefa(t, padrao) {
     <label class="campo"><span>O que precisa ser feito</span><input id="tTit" maxlength="160" value="${esc(t.titulo)}" ${dis} placeholder="Ex.: Montar vitrine de Natal da loja Centro"></label>
     <label class="campo"><span>Detalhes</span><textarea id="tDesc" maxlength="5000" ${dis} placeholder="Contexto, passos, links…">${esc(t.descricao)}</textarea></label>
     <div class="duas">
-      <label class="campo"><span>Responsável</span><select id="tResp" ${dis}>${opt('', 'Sem responsável', t.responsavel)}${ativos.map(p => opt(p.email, p.nome + (p.email === S.me.email ? ' (eu)' : ''), t.responsavel)).join('')}</select></label>
+      <label class="campo"><span>Responsável</span><select id="tResp" ${dis}>${opcoesResp(t.projetoId, t.responsavel)}</select></label>
       <label class="campo"><span>Projeto</span><select id="tProj" ${dis}>${opt('', 'Sem projeto', t.projetoId)}${S.projetos.filter(p => p.ativo || p.id === t.projetoId).map(p => opt(p.id, p.nome, t.projetoId)).join('')}</select></label>
       <label class="campo"><span>Início</span><input type="date" id="tIni" value="${esc(t.inicio || '')}" ${dis}></label>
       <label class="campo"><span>Prazo</span><input type="date" id="tPrazo" value="${esc(t.prazo || '')}" ${dis}></label>
@@ -932,6 +971,14 @@ function janelaTarefa(t, padrao) {
       <p class="st" style="margin:10px 0 0">Criada por ${esc(nome(t.criadoPor))} em ${brData(ymd(new Date(t.criadoEm)))}</p></div>`}`;
   const rodape = `${!nova && podeTudo(t) ? '<button class="btn perigo esq" id="tDel">Apagar</button>' : ''}<button class="btn" data-fecha2>${st ? 'Cancelar' : 'Fechar'}</button>${st ? `<button class="btn prim" id="tSalva">${nova ? 'Criar tarefa' : 'Salvar'}</button>` : ''}`;
   const j = abreJanela(nova ? 'Nova tarefa' : 'Tarefa', corpo, rodape);
+  // ao trocar o projeto, o responsável só pode ser alguém que faz parte dele
+  const selP = j.querySelector('#tProj');
+  if (selP) selP.onchange = () => {
+    const r = j.querySelector('#tResp'), atual = r.value, pid = selP.value ? +selP.value : null;
+    r.innerHTML = opcoesResp(pid, '');
+    if (atual && [...r.options].some(o => o.value === atual)) r.value = atual;
+    else if (atual) toast(`${primeiroNome(atual)} não faz parte deste projeto. Escolha outro responsável ou convide a pessoa para o projeto.`, true);
+  };
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   const salva = j.querySelector('#tSalva');
   if (salva) salva.onclick = async () => {
@@ -1012,11 +1059,14 @@ function janelaProjeto(p) {
       <label class="campo"><span>Fim previsto</span><input id="jFim" type="date" value="${esc(p.fim || '')}"></label>
       <label class="campo"><span>Cor</span><input id="jCor" type="color" value="${esc(p.cor)}" style="height:40px;padding:4px"></label>
     </div>
-    <p class="st" style="margin:0">O responsável pelo projeto também pode editá-lo. Projetos concluídos ou cancelados saem da lista de abertos.</p>`;
+    ${nova ? `<div class="campo"><span>👥 Convidar pessoas <span class="dica">(só quem fizer parte vai ver o projeto; dá para convidar depois também)</span></span>
+      <div class="convites">${S.pessoas.filter(x => x.ativo && x.email !== S.me.email).map(x => `<label><input type="checkbox" value="${esc(x.email)}" data-conv> ${esc(x.nome)}</label>`).join('') || '<span class="dica">Ninguém mais na equipe ainda.</span>'}</div></div>` : ''}
+    <p class="st" style="margin:0">🔒 O projeto é privado: só os membros veem. Você e o responsável ficam como donos e podem editar e convidar. Projetos concluídos ou cancelados saem da lista de abertos.</p>`;
   const j = abreJanela(nova ? 'Novo projeto' : 'Editar projeto', corpo, '<button class="btn" data-fecha2>Cancelar</button><button class="btn prim" id="jSalva">Salvar</button>');
   j.querySelector('[data-fecha2]').onclick = fechaJanela;
   j.querySelector('#jSalva').onclick = async () => {
     const d = { nome: $('#jNome').value, descricao: $('#jDesc').value, responsavel: $('#jResp').value || null, status: $('#jSt').value, inicio: $('#jIni').value || null, fim: $('#jFim').value || null, cor: $('#jCor').value };
+    if (nova) d.membros = [...j.querySelectorAll('[data-conv]:checked')].map(x => x.value);
     if (!d.nome.trim()) { toast('Dê um nome ao projeto.', true); return; }
     if (d.inicio && d.fim && d.fim < d.inicio) { toast('O fim previsto não pode ser antes do início.', true); return; }
     try { const r = await api(nova ? 'POST' : 'PUT', nova ? '/api/projetos' : '/api/projetos/' + p.id, d); fechaJanela(); toast(nova ? 'Projeto criado.' : 'Projeto salvo.'); if (nova) { S.vista = 'projetos'; S.projetoSel = r.id; } await recarrega(); } catch (e) { toast(e.message, true); }
@@ -1174,7 +1224,9 @@ function revisaNarracao(p, textoOriginal) {
     for (const el of j.querySelectorAll('.pnovo')) {
       if (!el.querySelector('[data-pon]').checked) continue;
       const n = p.projetosNovos.find(x => x.ref === el.dataset.pref);
-      try { const r = await api('POST', '/api/projetos', { nome: el.querySelector('[data-pnome]').value, descricao: n.descricao, responsavel: n.responsavel, inicio: n.inicio, fim: n.fim }); idDoNovo[n.ref] = r.id; }
+      // quem for designado para tarefas deste projeto novo entra como membro (o projeto é privado)
+      const membros = [...j.querySelectorAll('.prop[data-i]')].filter(x => x.querySelector('[data-on]').checked && x.querySelector('[data-k="projeto"]').value === 'n:' + n.ref).map(x => x.querySelector('[data-k="responsavel"]').value).filter(Boolean);
+      try { const r = await api('POST', '/api/projetos', { nome: el.querySelector('[data-pnome]').value, descricao: n.descricao, responsavel: n.responsavel, inicio: n.inicio, fim: n.fim, membros }); idDoNovo[n.ref] = r.id; }
       catch (e) { toast(`Projeto "${n.nome}": ${e.message}`, true); }
     }
     // 2) tarefas marcadas
@@ -1312,6 +1364,17 @@ main.addEventListener('click', e => {
   const ej = e.target.closest('[data-edita-proj]'); if (ej) { e.stopPropagation(); janelaProjeto(projeto(+ej.dataset.editaProj)); return; }
   if (e.target.closest('#btnAddPessoa')) { janelaPessoa(null); return; }
   if (e.target.closest('#btnAddProj')) { janelaProjeto(null); return; }
+  // membros do projeto
+  const cv = e.target.closest('[data-convida]');
+  if (cv) { const em = ($('#mNovo') || {}).value; if (!em) { toast('Escolha quem convidar.', true); return; }
+    api('POST', `/api/projetos/${cv.dataset.convida}/membros`, { email: em }).then(() => { toast(`${primeiroNome(em)} agora faz parte do projeto.`); recarrega(); }).catch(er => toast(er.message, true)); return; }
+  const rm = e.target.closest('[data-remove-membro]');
+  if (rm) { const em = rm.dataset.removeMembro;
+    if (!confirm(`Remover ${nome(em)} do projeto? Ela(e) deixa de ver o projeto, e as tarefas abertas dela(e) aqui ficam sem responsável.`)) return;
+    api('DELETE', `/api/projetos/${S.projetoSel}/membros/${encodeURIComponent(em)}`).then(r => { toast(`${primeiroNome(em)} saiu do projeto${r.tarefasSemResponsavel ? `; ${r.tarefasSemResponsavel} tarefa(s) ficaram sem responsável` : ''}.`); recarrega(); }).catch(er => toast(er.message, true)); return; }
+  const sp = e.target.closest('[data-sair-proj]');
+  if (sp) { if (!confirm('Sair deste projeto? Você deixa de ver o projeto e as tarefas dele. Para voltar, um dono precisa te convidar de novo.')) return;
+    api('DELETE', `/api/projetos/${sp.dataset.sairProj}/membros/${encodeURIComponent(S.me.email)}`).then(() => { toast('Você saiu do projeto.'); S.projetoSel = null; recarrega(); }).catch(er => toast(er.message, true)); return; }
   if (e.target.closest('[data-designa]')) return;
   if (e.target.closest('[data-dispensa-agenda]')) { localSet('agendaDispensada', '1'); desenha(); toast('Você pode conectar depois pelo menu da sua conta (canto superior direito).'); return; }
   const np = e.target.closest('[data-nova-no-proj]'); if (np) { e.stopPropagation(); janelaTarefa(null, { projetoId: +np.dataset.novaNoProj }); return; }
@@ -1338,6 +1401,8 @@ main.addEventListener('change', async e => {
     catch (er) { t.responsavel = ant; desenha(); toast(er.message, true); }
     return;
   }
+  const pm = e.target.closest('[data-papel-membro]');
+  if (pm) { api('PUT', `/api/projetos/${S.projetoSel}/membros/${encodeURIComponent(pm.dataset.papelMembro)}`, { papel: pm.value }).then(() => { toast(pm.value === 'dono' ? `${primeiroNome(pm.dataset.papelMembro)} agora é dono(a) do projeto.` : 'Papel atualizado.'); recarrega(); }).catch(er => { toast(er.message, true); recarrega(); }); return; }
   const gm = { gAgr: 'agrupar', gResp: 'resp', gProj: 'proj' }[e.target.id];
   if (gm) { S.g[gm] = e.target.value; if (gm === 'agrupar') localSet('agrupar', e.target.value); desenha(); return; }
   if (e.target.id === 'gConc') { S.g.concluidas = e.target.checked; desenha(); return; }

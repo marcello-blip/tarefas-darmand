@@ -16,22 +16,29 @@ Gestão de tarefas, controle de equipe e prazos, no Railway. É um sistema **sep
 - **📅 Google Agenda:** cada pessoa conecta a própria conta uma vez (aviso no Início ou menu da conta, no canto superior direito). As tarefas sob responsabilidade dela com data viram eventos de dia inteiro na **agenda principal**, do início ao prazo, com projeto, situação e link para o sistema. Mudou no sistema (datas no Gantt, responsável, concluída ✅, apagada), muda na agenda. A sincronização é só do sistema para a agenda: o que for mudado direto no Google Agenda não volta. Na tela Equipe, 📅 indica quem já conectou.
 - **Histórico:** cada tarefa guarda comentários e registra sozinha quem mudou situação, prazo, responsável ou prioridade (ninguém "mexe no prazo" sem deixar rastro).
 
-## Quem pode o quê
+## Privacidade: quem vê o quê
 
-| | Gestor | Quem criou a tarefa | Responsável | Resto da equipe |
-|---|---|---|---|---|
-| Ver tarefas | todas | todas | todas | todas |
-| Criar tarefa | sim | sim | sim | sim |
-| Mudar título, prazo, responsável, prioridade | sim | sim | não | não |
-| Mudar a situação (A fazer, Fazendo, Aguardando aprovação) | sim | sim | sim | não |
-| Aprovar (marcar como Concluído) ou devolver | sim | sim | não (vai para Aguardando aprovação) | não |
-| Lembretes do mural | só os próprios | só os próprios | só os próprios | só os próprios |
-| Comentar | sim | sim | sim | sim |
-| Apagar tarefa | sim | sim | não | não |
-| Equipe e criar projetos | sim | não | não | não |
-| Editar um projeto | sim | o responsável pelo projeto também | | |
+Ninguém vê por cargo, nem gestor nem diretoria.
 
-Gestores fixos ficam em `ADMIN_EMAILS`; outros podem ser promovidos na tela Equipe. Qualquer conta Google Workspace @darmand.com.br que entrar vira membro; o gestor pode desativar o acesso.
+- **Projeto:** só os **membros** veem o projeto e as tarefas dele. Qualquer pessoa pode criar um projeto; quem cria (e o responsável pelo projeto) é **dono** e convida as pessoas na página do projeto (👥 Membros). Donos editam o projeto, convidam, removem e passam a posse; cada membro pode sair. Ao remover alguém, as tarefas abertas dele(a) no projeto ficam sem responsável.
+- **Tarefa sem projeto:** só **quem criou** e **o responsável** veem.
+- **Lembretes do mural:** só o dono.
+- **Responsável** de uma tarefa de projeto precisa ser membro do projeto: primeiro convide, depois designe.
+- O **Narrar** só enxerga os projetos de quem está narrando. Num projeto novo criado por ele, quem for designado para as tarefas entra como membro.
+- Projetos que já existiam antes da privacidade receberam como membros o responsável (dono) e todas as pessoas que já tinham tarefas neles.
+
+## Quem pode o quê (entre quem vê a tarefa)
+
+| | Quem criou a tarefa, donos do projeto e gestor | Responsável | Demais membros |
+|---|---|---|---|
+| Criar tarefa (no projeto, só membros) | sim | sim | sim |
+| Mudar título, prazo, responsável, prioridade | sim | não | não |
+| Mudar a situação (A fazer, Fazendo, Aguardando aprovação) | sim | sim | não |
+| Aprovar (marcar como Concluído) ou devolver | sim | não (vai para Aguardando aprovação) | não |
+| Comentar | sim | sim | sim |
+| Apagar tarefa | sim | não | não |
+
+O **gestor** cuida do cadastro da equipe (adicionar, editar, desativar pessoas) e só enxerga os projetos dos quais faz parte. Gestores fixos ficam em `ADMIN_EMAILS`; outros podem ser promovidos na tela Equipe. Qualquer conta Google Workspace @darmand.com.br que entrar vira membro; o gestor pode desativar o acesso.
 
 ## Testar no computador
 
